@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Blinker — Don't Blink</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+  <!-- Landing screen -->
+  <div id="screen-landing" class="screen active">
+    <div class="landing-inner">
+      <div class="logo-wrap">
+        <div class="logo-eye">
+          <div class="eye-outer">
+            <div class="eye-inner">
+              <div class="pupil"></div>
+            </div>
+          </div>
+        </div>
+        <h1 class="logo-text">blinker</h1>
+      </div>
+      <p class="tagline">Stare down a stranger.<br>First to blink <span class="red">loses.</span></p>
+      <button id="btn-start" class="btn-primary">Find Opponent</button>
+      <p class="disclaimer">Requires webcam access &amp; a brave soul.</p>
+    </div>
+  </div>
+
+  <!-- Permission / setup screen -->
+  <div id="screen-setup" class="screen">
+    <div class="setup-inner">
+      <h2>Setting up your camera…</h2>
+      <div class="spinner"></div>
+      <p id="setup-status">Requesting camera access</p>
+    </div>
+  </div>
+
+  <!-- Waiting screen -->
+  <div id="screen-waiting" class="screen">
+    <div class="waiting-inner">
+      <div class="pulse-ring"></div>
+      <h2>Looking for an opponent…</h2>
+      <p>Staring into the void.</p>
+      <button id="btn-cancel" class="btn-secondary">Cancel</button>
+    </div>
+  </div>
+
+  <!-- Game screen -->
+  <div id="screen-game" class="screen">
+    <div class="game-layout">
+
+      <!-- Opponent video -->
+      <div class="video-panel opponent-panel">
+        <video id="video-opponent" autoplay playsinline></video>
+        <div class="video-label">Opponent</div>
+        <div id="opponent-blink-flash" class="blink-flash"></div>
+      </div>
+
+      <!-- Center HUD -->
+      <div class="hud">
+        <div id="hud-countdown" class="hud-countdown hidden">
+          <span id="countdown-num"></span>
+        </div>
+        <div id="hud-live" class="hud-live hidden">
+          <div class="hud-icon">👁️</div>
+          <div class="hud-text">DON'T<br>BLINK</div>
+          <div class="hud-blink-bar">
+            <div class="hud-blink-label">You</div>
+            <div class="blink-meter" id="my-blink-meter">
+              <div class="blink-fill" id="my-blink-fill"></div>
+            </div>
+            <div class="hud-blink-label">Them</div>
+            <div class="blink-meter" id="their-blink-meter">
+              <div class="blink-fill" id="their-blink-fill"></div>
+            </div>
+          </div>
+        </div>
+        <div id="hud-result" class="hud-result hidden">
+          <div id="result-emoji"></div>
+          <div id="result-text"></div>
+          <div class="result-buttons">
+            <button id="btn-play-again" class="btn-primary">Play Again</button>
+            <button id="btn-home" class="btn-secondary">Home</button>
+          </div>
+          <p id="result-waiting" class="result-waiting hidden">Waiting for opponent…</p>
+        </div>
+      </div>
+
+      <!-- Self video -->
+      <div class="video-panel self-panel">
+        <video id="video-self" autoplay playsinline muted></video>
+        <canvas id="canvas-detect" style="display:none"></canvas>
+        <div class="video-label">You</div>
+        <div id="self-blink-flash" class="blink-flash"></div>
+        <div id="eye-status" class="eye-status">
+          <span id="eye-dot" class="eye-dot open"></span>
+          <span id="eye-label">Eyes open</span>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- Scripts -->
+  <script src="https://cdn.socket.io/4.6.1/socket.io.min.js"></script>
+  <!-- TensorFlow.js + face landmarks detection -->
+  <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs-core@4.11.0/dist/tf-core.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs-backend-webgl@4.11.0/dist/tf-backend-webgl.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/face-landmarks-detection@1.0.5/dist/face-landmarks-detection.min.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
