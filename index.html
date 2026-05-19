@@ -1,0 +1,633 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Blinker — Don't Blink</title>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#0a0a0f;--surface:#13131a;--surface2:#1d1d2a;
+  --accent:#7c3aed;--accent2:#a855f7;
+  --red:#ef4444;--green:#22c55e;
+  --text:#f0f0f5;--muted:#8888aa;--border:#2a2a3d;
+  --glow:rgba(124,58,237,.35);
+}
+html,body{height:100%;font-family:'Segoe UI',system-ui,sans-serif;background:var(--bg);color:var(--text);overflow:hidden}
+
+/* ── screens ── */
+.screen{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;opacity:0;pointer-events:none;transition:opacity .35s}
+.screen.active{opacity:1;pointer-events:all}
+
+/* ── buttons ── */
+.btn{display:inline-block;padding:13px 34px;border:none;border-radius:50px;cursor:pointer;font-size:1rem;font-weight:700;transition:transform .15s,box-shadow .15s}
+.btn-primary{background:linear-gradient(135deg,var(--accent),var(--accent2));color:#fff;box-shadow:0 0 30px var(--glow)}
+.btn-primary:hover{transform:translateY(-2px);box-shadow:0 0 50px var(--glow)}
+.btn-primary:disabled{opacity:.5;cursor:not-allowed;transform:none}
+.btn-secondary{background:transparent;color:var(--muted);border:1px solid var(--border)}
+.btn-secondary:hover{color:var(--text);border-color:var(--muted)}
+
+/* ── landing ── */
+.land{display:flex;flex-direction:column;align-items:center;gap:26px;text-align:center;padding:32px}
+.logo-row{display:flex;align-items:center;gap:18px}
+.eye-wrap{width:72px;height:44px;background:#fff;border-radius:50%;display:flex;align-items:center;justify-content:center;box-shadow:0 0 30px var(--glow),0 0 0 2px var(--accent);animation:glow 3s ease-in-out infinite}
+@keyframes glow{0%,100%{box-shadow:0 0 20px var(--glow),0 0 0 2px var(--accent)}50%{box-shadow:0 0 55px var(--glow),0 0 0 2px var(--accent2)}}
+.eye-ball{width:44px;height:44px;background:#1a0550;border-radius:50%;display:flex;align-items:center;justify-content:center;overflow:hidden}
+.pupil{width:22px;height:22px;background:#000;border-radius:50%;position:relative}
+.pupil::after{content:'';position:absolute;top:4px;left:5px;width:7px;height:7px;background:#fff;border-radius:50%;opacity:.7}
+.logo-text{font-size:3.5rem;font-weight:900;letter-spacing:-2px;background:linear-gradient(135deg,#fff 30%,var(--accent2));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+.tagline{font-size:1.25rem;color:var(--muted);line-height:1.6}
+.tagline .red{color:var(--red);font-weight:700}
+
+.mode-cards{display:flex;gap:16px;flex-wrap:wrap;justify-content:center;margin-top:8px}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:24px 28px;cursor:pointer;text-align:center;transition:border-color .2s,box-shadow .2s;min-width:160px}
+.card:hover{border-color:var(--accent);box-shadow:0 0 20px var(--glow)}
+.card h3{font-size:1rem;margin-bottom:6px}
+.card p{font-size:.8rem;color:var(--muted)}
+.card .icon{font-size:2rem;margin-bottom:10px}
+
+/* join input */
+.join-row{display:flex;gap:10px;align-items:center}
+.code-input{background:var(--surface2);border:1px solid var(--border);border-radius:10px;color:var(--text);font-size:1.4rem;font-weight:700;letter-spacing:6px;text-align:center;text-transform:uppercase;width:160px;padding:10px 14px;outline:none;transition:border-color .2s}
+.code-input:focus{border-color:var(--accent)}
+.code-input::placeholder{letter-spacing:2px;font-size:1rem;color:#444}
+
+/* ── setup / waiting ── */
+.center-col{display:flex;flex-direction:column;align-items:center;gap:22px;text-align:center;padding:32px}
+.spinner{width:48px;height:48px;border:4px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:spin .8s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.pulse-ring{width:80px;height:80px;border-radius:50%;border:3px solid var(--accent);animation:pulse 1.6s ease-out infinite}
+@keyframes pulse{0%{transform:scale(.8);opacity:1}100%{transform:scale(1.8);opacity:0}}
+
+/* room code display */
+.room-code-box{background:var(--surface2);border:1px solid var(--border);border-radius:12px;padding:18px 32px;text-align:center}
+.room-code-box .code{font-size:2.8rem;font-weight:900;letter-spacing:8px;color:var(--accent2)}
+.room-code-box .hint{font-size:.8rem;color:var(--muted);margin-top:6px}
+.copy-btn{margin-top:12px;font-size:.85rem;padding:8px 20px}
+
+/* ── game ── */
+.game-layout{width:100vw;height:100vh;display:grid;grid-template-columns:1fr 260px 1fr}
+.vpanel{position:relative;overflow:hidden;background:#000}
+.vpanel video{width:100%;height:100%;object-fit:cover;display:block;transform:scaleX(-1)}
+.vlabel{position:absolute;bottom:12px;left:12px;background:rgba(0,0,0,.6);color:var(--muted);font-size:.75rem;font-weight:600;padding:4px 10px;border-radius:20px;text-transform:uppercase;letter-spacing:1px}
+.blink-flash{position:absolute;inset:0;background:var(--red);opacity:0;pointer-events:none;transition:opacity .1s}
+.blink-flash.flash{opacity:.5}
+.eye-status{position:absolute;top:12px;right:12px;display:flex;align-items:center;gap:6px;background:rgba(0,0,0,.65);padding:5px 12px;border-radius:20px;font-size:.8rem;font-weight:600;color:var(--muted);border:1px solid var(--border)}
+.eye-dot{width:8px;height:8px;border-radius:50%;background:var(--green);transition:background .15s}
+.eye-dot.closed{background:var(--red)}
+
+/* hud */
+.hud{display:flex;align-items:center;justify-content:center;flex-direction:column;background:var(--surface);border-left:1px solid var(--border);border-right:1px solid var(--border);padding:24px 16px;z-index:10}
+.hidden{display:none!important}
+#countdown-num{font-size:7rem;font-weight:900;color:var(--accent2);text-shadow:0 0 40px var(--glow);animation:pop .4s ease}
+@keyframes pop{0%{transform:scale(.5);opacity:0}70%{transform:scale(1.1)}100%{transform:scale(1);opacity:1}}
+.hud-live{display:flex;flex-direction:column;align-items:center;gap:18px;width:100%}
+.hud-icon{font-size:2.5rem;animation:blink-icon 3s step-end infinite}
+@keyframes blink-icon{0%,100%{opacity:1}50%{opacity:.1}}
+.hud-text{font-size:1.35rem;font-weight:900;letter-spacing:4px;text-align:center;line-height:1.3}
+.hud-bar-section{width:100%;display:flex;flex-direction:column;gap:8px;margin-top:10px}
+.bar-label{font-size:.7rem;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:1px}
+.blink-meter{width:100%;height:8px;background:var(--surface2);border-radius:4px;overflow:hidden}
+.blink-fill{height:100%;width:0%;background:linear-gradient(90deg,var(--accent),var(--accent2));border-radius:4px;transition:width .3s ease}
+.hud-result{display:flex;flex-direction:column;align-items:center;gap:14px;text-align:center}
+#result-emoji{font-size:3.5rem}
+#result-text{font-size:1.5rem;font-weight:900;line-height:1.3}
+.result-btns{display:flex;flex-direction:column;gap:10px;width:100%;margin-top:4px}
+.result-waiting{color:var(--muted);font-size:.82rem}
+
+@media(max-width:700px){
+  .game-layout{grid-template-columns:1fr;grid-template-rows:1fr 200px 1fr}
+  .hud{border-left:none;border-right:none;border-top:1px solid var(--border);border-bottom:1px solid var(--border)}
+}
+</style>
+</head>
+<body>
+
+<!-- LANDING -->
+<div id="s-land" class="screen active">
+  <div class="land">
+    <div class="logo-row">
+      <div class="eye-wrap"><div class="eye-ball"><div class="pupil"></div></div></div>
+      <div class="logo-text">blinker</div>
+    </div>
+    <p class="tagline">Stare down a stranger.<br>First to blink <span class="red">loses.</span></p>
+
+    <div class="mode-cards">
+      <div class="card" id="card-create">
+        <div class="icon">🔗</div>
+        <h3>Create Game</h3>
+        <p>Get a code &amp; share it with your opponent</p>
+      </div>
+      <div class="card" id="card-join">
+        <div class="icon">🎮</div>
+        <h3>Join Game</h3>
+        <p>Enter the code your opponent gave you</p>
+      </div>
+    </div>
+
+    <!-- join form (hidden until Join clicked) -->
+    <div id="join-form" class="hidden" style="display:flex;flex-direction:column;align-items:center;gap:12px">
+      <div class="join-row">
+        <input class="code-input" id="join-input" maxlength="4" placeholder="CODE" autocomplete="off" spellcheck="false"/>
+        <button class="btn btn-primary" id="btn-join-go">Join</button>
+      </div>
+      <button class="btn btn-secondary" id="btn-join-back" style="padding:8px 20px;font-size:.85rem">← Back</button>
+    </div>
+  </div>
+</div>
+
+<!-- SETUP -->
+<div id="s-setup" class="screen">
+  <div class="center-col">
+    <h2>Setting up camera…</h2>
+    <div class="spinner"></div>
+    <p id="setup-msg" style="color:var(--muted)">Requesting camera access</p>
+  </div>
+</div>
+
+<!-- LOBBY (show room code / waiting) -->
+<div id="s-lobby" class="screen">
+  <div class="center-col">
+    <div class="pulse-ring"></div>
+    <h2 id="lobby-title">Waiting for opponent…</h2>
+    <div id="room-code-box" class="room-code-box hidden">
+      <div class="hint">Share this code</div>
+      <div class="code" id="room-code-display"></div>
+      <div class="hint">Your opponent enters it to join</div>
+      <button class="btn btn-secondary copy-btn" id="btn-copy">Copy code</button>
+    </div>
+    <p id="lobby-status" style="color:var(--muted)"></p>
+    <button class="btn btn-secondary" id="btn-lobby-cancel">Cancel</button>
+  </div>
+</div>
+
+<!-- GAME -->
+<div id="s-game" class="screen">
+  <div class="game-layout">
+
+    <div class="vpanel" id="vpanel-opp">
+      <video id="video-opp" autoplay playsinline></video>
+      <div class="vlabel">Opponent</div>
+      <div class="blink-flash" id="opp-flash"></div>
+    </div>
+
+    <div class="hud">
+      <div id="hud-countdown" class="hidden"><span id="countdown-num"></span></div>
+
+      <div id="hud-live" class="hud-live hidden">
+        <div class="hud-icon">👁️</div>
+        <div class="hud-text">DON'T<br>BLINK</div>
+        <div class="hud-bar-section">
+          <div class="bar-label">You</div>
+          <div class="blink-meter"><div class="blink-fill" id="my-fill"></div></div>
+          <div class="bar-label">Them</div>
+          <div class="blink-meter"><div class="blink-fill" id="their-fill"></div></div>
+        </div>
+      </div>
+
+      <div id="hud-result" class="hud-result hidden">
+        <div id="result-emoji"></div>
+        <div id="result-text"></div>
+        <div class="result-btns">
+          <button class="btn btn-primary" id="btn-again">Play Again</button>
+          <button class="btn btn-secondary" id="btn-home">Home</button>
+        </div>
+        <p class="result-waiting hidden" id="result-waiting">Waiting for opponent…</p>
+      </div>
+    </div>
+
+    <div class="vpanel" id="vpanel-self">
+      <video id="video-self" autoplay playsinline muted></video>
+      <canvas id="canvas-detect" style="display:none"></canvas>
+      <div class="vlabel">You</div>
+      <div class="blink-flash" id="self-flash"></div>
+      <div class="eye-status">
+        <span class="eye-dot" id="eye-dot"></span>
+        <span id="eye-label">Eyes open</span>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- PeerJS (free signaling cloud, no server needed) -->
+<script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
+<!-- TensorFlow.js -->
+<script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs-core@4.11.0/dist/tf-core.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs-backend-webgl@4.11.0/dist/tf-backend-webgl.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/face-landmarks-detection@1.0.5/dist/face-landmarks-detection.min.js"></script>
+
+<script>
+// ─────────────────────────────────────────────
+// Helpers
+// ─────────────────────────────────────────────
+const $ = (id) => document.getElementById(id);
+const screens = ['s-land','s-setup','s-lobby','s-game'];
+function show(id){ screens.forEach(s=>$(s).classList.toggle('active',s===id)); }
+function flash(el){ el.classList.add('flash'); setTimeout(()=>el.classList.remove('flash'),400); }
+
+// ─────────────────────────────────────────────
+// State
+// ─────────────────────────────────────────────
+let localStream = null;
+let detector    = null;
+let peer        = null;     // PeerJS instance
+let conn        = null;     // PeerJS DataConnection (messaging)
+let mediaConn   = null;     // PeerJS MediaConnection (video)
+let myRole      = null;     // 'host' | 'guest'
+let roomCode    = null;
+
+let gameActive  = false;
+let rafId       = null;
+let closedFrames = 0;
+let blinkSent   = false;    // prevent double-fire
+let myBlinks    = 0;
+let theirBlinks = 0;
+const MAX_BLINKS = 5;
+const EAR_THRESH = 0.21;
+const BLINK_FRAMES = 2;
+
+// ─────────────────────────────────────────────
+// Landing UI
+// ─────────────────────────────────────────────
+$('card-create').onclick = () => startFlow('host');
+$('card-join').onclick   = () => {
+  $('card-create').style.display = 'none';
+  $('card-join').style.display   = 'none';
+  $('join-form').classList.remove('hidden');
+  $('join-form').style.display = 'flex';
+  $('join-input').focus();
+};
+$('btn-join-back').onclick = () => {
+  $('card-create').style.display = '';
+  $('card-join').style.display   = '';
+  $('join-form').classList.add('hidden');
+};
+$('btn-join-go').onclick = () => {
+  const code = $('join-input').value.trim().toUpperCase();
+  if(code.length !== 4){ $('join-input').style.borderColor='var(--red)'; return; }
+  $('join-input').style.borderColor='';
+  startFlow('guest', code);
+};
+$('join-input').addEventListener('keydown', e => { if(e.key==='Enter') $('btn-join-go').click(); });
+
+$('btn-lobby-cancel').onclick = () => { cleanup(); show('s-land'); };
+$('btn-home').onclick          = () => { cleanup(); show('s-land'); };
+$('btn-again').onclick         = () => {
+  $('btn-again').disabled = true;
+  $('result-waiting').classList.remove('hidden');
+  send({ type:'play-again' });
+};
+
+// ─────────────────────────────────────────────
+// Main flow
+// ─────────────────────────────────────────────
+async function startFlow(role, code){
+  myRole = role;
+  show('s-setup');
+
+  try {
+    await initCamera();
+    await initDetector();
+  } catch(e) {
+    $('setup-msg').textContent = 'Camera error: ' + e.message;
+    return;
+  }
+
+  show('s-lobby');
+  initPeer(role, code);
+}
+
+// ─────────────────────────────────────────────
+// Camera
+// ─────────────────────────────────────────────
+async function initCamera(){
+  $('setup-msg').textContent = 'Requesting camera access…';
+  localStream = await navigator.mediaDevices.getUserMedia({
+    video:{ width:640, height:480, facingMode:'user' }, audio:false
+  });
+  $('video-self').srcObject = localStream;
+  return new Promise(res => { $('video-self').onloadedmetadata = res; });
+}
+
+// ─────────────────────────────────────────────
+// Detector
+// ─────────────────────────────────────────────
+async function initDetector(){
+  $('setup-msg').textContent = 'Loading face AI…';
+  await tf.setBackend('webgl');
+  await tf.ready();
+  detector = await faceLandmarksDetection.createDetector(
+    faceLandmarksDetection.SupportedModels.MediaPipeFaceMesh,
+    { runtime:'tfjs', refineLandmarks:false, maxFaces:1 }
+  );
+}
+
+// ─────────────────────────────────────────────
+// PeerJS — matchmaking without a custom server
+// ─────────────────────────────────────────────
+function initPeer(role, joinCode){
+  // Host gets peer ID = "BLINKER-XXXX", guest connects to that ID
+  const hostPeerId = role === 'host'
+    ? 'BLINKER-' + genCode()
+    : 'BLINKER-' + joinCode;
+
+  peer = new Peer(role === 'host' ? hostPeerId : undefined);
+
+  peer.on('error', err => {
+    if(err.type === 'unavailable-id'){
+      $('lobby-title').textContent = 'Code taken, try another…';
+      peer.destroy();
+      peer = new Peer('BLINKER-' + genCode());
+      setupHostPeer();
+    } else {
+      $('lobby-status').textContent = 'Connection error: ' + err.message;
+    }
+  });
+
+  peer.on('open', (id) => {
+    if(role === 'host'){
+      roomCode = id.replace('BLINKER-','');
+      setupHostPeer();
+    } else {
+      roomCode = joinCode;
+      setupGuestPeer(hostPeerId);
+    }
+  });
+}
+
+function setupHostPeer(){
+  $('lobby-title').textContent  = 'Waiting for opponent…';
+  $('room-code-display').textContent = roomCode;
+  $('room-code-box').classList.remove('hidden');
+  $('lobby-status').textContent = '';
+
+  $('btn-copy').onclick = () => {
+    navigator.clipboard.writeText(roomCode).then(()=>{
+      $('btn-copy').textContent = 'Copied!';
+      setTimeout(()=>{ $('btn-copy').textContent='Copy code'; }, 1500);
+    });
+  };
+
+  // Wait for guest to connect (data)
+  peer.on('connection', (c) => {
+    conn = c;
+    conn.on('open', () => {
+      $('lobby-status').textContent = 'Opponent connected! Starting video…';
+      // Host calls guest with media
+      mediaConn = peer.call(conn.peer, localStream);
+      mediaConn.on('stream', (remoteStream) => {
+        $('video-opp').srcObject = remoteStream;
+        onBothConnected();
+      });
+      setupDataChannel();
+    });
+  });
+}
+
+function setupGuestPeer(hostPeerId){
+  $('lobby-title').textContent  = 'Connecting to game…';
+  $('room-code-box').classList.add('hidden');
+  $('lobby-status').textContent = 'Looking for host…';
+
+  // Guest connects data first
+  conn = peer.connect(hostPeerId, { reliable:true });
+  conn.on('open', () => {
+    $('lobby-status').textContent = 'Connected! Waiting for video…';
+    // Guest answers media call from host
+    peer.on('call', (call) => {
+      mediaConn = call;
+      call.answer(localStream);
+      call.on('stream', (remoteStream) => {
+        $('video-opp').srcObject = remoteStream;
+        onBothConnected();
+      });
+    });
+    setupDataChannel();
+  });
+  conn.on('error', () => {
+    $('lobby-status').textContent = 'Could not find that code. Check and try again.';
+  });
+}
+
+function setupDataChannel(){
+  conn.on('data', onMessage);
+  conn.on('close', () => {
+    if($('s-game').classList.contains('active')){
+      gameActive = false;
+      if(rafId) cancelAnimationFrame(rafId);
+      $('hud-live').classList.add('hidden');
+      $('hud-countdown').classList.add('hidden');
+      $('hud-result').classList.remove('hidden');
+      $('result-emoji').textContent = '👋';
+      $('result-text').innerHTML = '<span style="color:var(--muted)">Opponent left.</span>';
+      $('btn-again').disabled = true;
+    }
+  });
+}
+
+function send(msg){ if(conn && conn.open) conn.send(msg); }
+
+// ─────────────────────────────────────────────
+// Both peers have video — start game
+// ─────────────────────────────────────────────
+let myReady = false, theirReady = false;
+function onBothConnected(){
+  show('s-game');
+  resetHUD();
+  // Signal ready
+  myReady = false; theirReady = false;
+  myReady = true;
+  send({ type:'ready' });
+  checkBothReady();
+}
+
+function checkBothReady(){
+  if(myReady && theirReady) startCountdown();
+}
+
+let againReady = { me:false, them:false };
+function onMessage(msg){
+  if(msg.type === 'ready'){ theirReady = true; checkBothReady(); }
+  else if(msg.type === 'blink'){ onOpponentBlink(); }
+  else if(msg.type === 'play-again'){
+    againReady.them = true;
+    if(againReady.me && againReady.them){ doPlayAgain(); }
+    else { $('result-waiting').textContent = 'Opponent is ready — waiting for you…'; }
+  }
+}
+
+// ─────────────────────────────────────────────
+// Countdown
+// ─────────────────────────────────────────────
+function startCountdown(){
+  $('hud-countdown').classList.remove('hidden');
+  $('hud-live').classList.add('hidden');
+  $('hud-result').classList.add('hidden');
+  gameActive = false;
+
+  let n = 3;
+  $('countdown-num').textContent = n;
+  const tick = setInterval(()=>{
+    n--;
+    if(n <= 0){
+      clearInterval(tick);
+      $('countdown-num').textContent = 'GO!';
+      setTimeout(()=>{
+        $('hud-countdown').classList.add('hidden');
+        $('hud-live').classList.remove('hidden');
+        startGame();
+      }, 600);
+    } else {
+      $('countdown-num').textContent = n;
+    }
+  }, 1000);
+}
+
+// ─────────────────────────────────────────────
+// Game + blink detection
+// ─────────────────────────────────────────────
+function startGame(){
+  gameActive = true;
+  closedFrames = 0;
+  blinkSent = false;
+  myBlinks = 0; theirBlinks = 0;
+  updateMeters();
+  detectionLoop();
+}
+
+function detectionLoop(){
+  const vid = $('video-self');
+  async function loop(){
+    if(!gameActive) return;
+    if(vid.readyState === 4){
+      try {
+        const faces = await detector.estimateFaces(vid, { flipHorizontal:false });
+        if(faces.length){
+          const ear = avgEAR(faces[0].keypoints);
+          const closed = ear < EAR_THRESH;
+          $('eye-dot').classList.toggle('closed', closed);
+          $('eye-label').textContent = closed ? 'Eyes closing' : 'Eyes open';
+          if(closed){ closedFrames++; }
+          else { closedFrames = 0; blinkSent = false; }
+          if(closedFrames >= BLINK_FRAMES && !blinkSent){
+            blinkSent = true;
+            onMyBlink();
+          }
+        }
+      } catch(_){}
+    }
+    rafId = requestAnimationFrame(loop);
+  }
+  loop();
+}
+
+// EAR calculation using MediaPipe face mesh indices
+function avgEAR(kp){
+  return (ear(kp,386,374,263,362) + ear(kp,159,145,33,133)) / 2;
+}
+function ear(kp, topI, botI, leftI, rightI){
+  const t=kp[topI], b=kp[botI], l=kp[leftI], r=kp[rightI];
+  if(!t||!b||!l||!r) return 1;
+  const v = Math.hypot(t.x-b.x, t.y-b.y);
+  const h = Math.hypot(l.x-r.x, l.y-r.y);
+  return h>0 ? v/h : 1;
+}
+
+function onMyBlink(){
+  if(!gameActive) return;
+  gameActive = false;
+  if(rafId) cancelAnimationFrame(rafId);
+  myBlinks++;
+  updateMeters();
+  flash($('self-flash'));
+  send({ type:'blink' });
+  setTimeout(()=>showResult(false), 400);
+}
+
+function onOpponentBlink(){
+  if(!gameActive) return;
+  gameActive = false;
+  if(rafId) cancelAnimationFrame(rafId);
+  theirBlinks++;
+  updateMeters();
+  flash($('opp-flash'));
+  setTimeout(()=>showResult(true), 400);
+}
+
+// ─────────────────────────────────────────────
+// Result
+// ─────────────────────────────────────────────
+function showResult(won){
+  $('hud-live').classList.add('hidden');
+  $('hud-countdown').classList.add('hidden');
+  $('hud-result').classList.remove('hidden');
+  $('result-emoji').textContent = won ? '🏆' : '😵';
+  $('result-text').innerHTML = won
+    ? '<span style="color:var(--green)">You won!</span><br><small>They blinked first.</small>'
+    : '<span style="color:var(--red)">You blinked!</span><br><small>Better luck next time.</small>';
+  $('btn-again').disabled = false;
+  $('result-waiting').classList.add('hidden');
+  againReady = { me:false, them:false };
+
+  // Wire play-again button here so we capture current state
+  $('btn-again').onclick = () => {
+    $('btn-again').disabled = true;
+    $('result-waiting').classList.remove('hidden');
+    $('result-waiting').textContent = 'Waiting for opponent…';
+    againReady.me = true;
+    send({ type:'play-again' });
+    if(againReady.me && againReady.them) doPlayAgain();
+  };
+}
+
+function doPlayAgain(){
+  againReady = { me:false, them:false };
+  myReady = true; theirReady = true;
+  startCountdown();
+}
+
+// ─────────────────────────────────────────────
+// Misc helpers
+// ─────────────────────────────────────────────
+function updateMeters(){
+  $('my-fill').style.width    = Math.min(myBlinks    / MAX_BLINKS * 100, 100) + '%';
+  $('their-fill').style.width = Math.min(theirBlinks / MAX_BLINKS * 100, 100) + '%';
+}
+function resetHUD(){
+  $('hud-countdown').classList.add('hidden');
+  $('hud-live').classList.add('hidden');
+  $('hud-result').classList.add('hidden');
+  myBlinks = 0; theirBlinks = 0; updateMeters();
+}
+function cleanup(){
+  gameActive = false;
+  if(rafId){ cancelAnimationFrame(rafId); rafId = null; }
+  if(mediaConn){ mediaConn.close(); mediaConn = null; }
+  if(conn){ conn.close(); conn = null; }
+  if(peer){ peer.destroy(); peer = null; }
+  if(localStream){ localStream.getTracks().forEach(t=>t.stop()); localStream = null; }
+  $('video-self').srcObject = null;
+  $('video-opp').srcObject  = null;
+  // Reset landing UI
+  $('card-create').style.display = '';
+  $('card-join').style.display   = '';
+  $('join-form').classList.add('hidden');
+  $('join-input').value = '';
+  myReady = false; theirReady = false;
+  againReady = { me:false, them:false };
+}
+function genCode(){
+  return Math.random().toString(36).slice(2,6).toUpperCase();
+}
+
+// Landing eye animation
+const eyeBall = document.querySelector('.eye-ball');
+setInterval(()=>{
+  eyeBall.style.transition = 'transform .08s';
+  eyeBall.style.transform  = 'scaleY(0.05)';
+  setTimeout(()=>{ eyeBall.style.transform = 'scaleY(1)'; }, 120);
+}, 3500 + Math.random()*2000);
+</script>
+</body>
+</html>
