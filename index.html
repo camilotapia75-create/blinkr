@@ -550,129 +550,31 @@ html,body{
 
 <!-- ── LANDING ── -->
 <div id="s-land" class="screen active">
-  <div class="land-hero">
+  <!-- Full-viewport canvas eye -->
+  <canvas id="eye-canvas"></canvas>
+
+  <!-- UI overlay -->
+  <div class="land-ui" id="land-ui">
     <nav class="land-nav">
-      <div class="nav-logo">
-        <svg width="26" height="14" viewBox="0 0 52 28" fill="none" id="nav-eye-svg">
-          <defs>
-            <radialGradient id="nav-iris-g" cx="44%" cy="38%" r="55%">
-              <stop offset="0%" stop-color="#ff6b85"/>
-              <stop offset="60%" stop-color="#ff2d55"/>
-              <stop offset="100%" stop-color="#7a0020"/>
-            </radialGradient>
-          </defs>
-          <path d="M2 14 C16 2 36 2 50 14 C36 26 16 26 2 14Z" fill="#f0f0f5"/>
-          <g id="nav-iris-g-el">
-            <circle cx="26" cy="14" r="9" fill="url(#nav-iris-g)"/>
-            <circle cx="26" cy="14" r="4.5" fill="#000"/>
-            <circle cx="22.5" cy="10.5" r="2" fill="white" opacity="0.9"/>
-          </g>
-        </svg>
-        <span class="nav-wordmark">blinker</span>
-      </div>
-      <div class="nav-live">
-        <div class="nav-live-dot"></div>
-        live
-      </div>
+      <span class="nav-wordmark">blinker</span>
+      <div class="nav-live"><div class="nav-live-dot"></div>live</div>
     </nav>
 
-    <div class="land-body">
-      <!-- Mobile: eye on top -->
-      <div class="hero-eye-wrap mobile-hero" id="big-eye-wrap-mobile">
-        <svg class="hero-eye-svg" width="200" height="100" viewBox="0 0 280 140" fill="none">
-          <defs>
-            <radialGradient id="iris-gm" cx="42%" cy="36%" r="58%">
-              <stop offset="0%" stop-color="#ff8a9a"/>
-              <stop offset="30%" stop-color="#ff2d55"/>
-              <stop offset="100%" stop-color="#5a0018"/>
-            </radialGradient>
-            <filter id="eye-glow-m">
-              <feGaussianBlur stdDeviation="6" result="b"/>
-              <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
-            </filter>
-            <clipPath id="eye-clip-m">
-              <path d="M8 70 C70 6 210 6 272 70 C210 134 70 134 8 70Z"/>
-            </clipPath>
-          </defs>
-          <ellipse cx="140" cy="70" rx="120" ry="55" fill="rgba(255,45,85,0.05)"/>
-          <path d="M8 70 C70 6 210 6 272 70 C210 134 70 134 8 70Z" fill="#f2f2f8"/>
-          <g clip-path="url(#eye-clip-m)">
-            <g id="big-iris" style="will-change:transform">
-              <circle cx="140" cy="70" r="50" fill="url(#iris-gm)" filter="url(#eye-glow-m)"/>
-              <circle cx="140" cy="70" r="40" fill="none" stroke="rgba(255,80,60,0.22)" stroke-width="1.5"/>
-              <circle cx="140" cy="70" r="30" fill="none" stroke="rgba(200,20,40,0.15)" stroke-width="1"/>
-              <circle id="big-pupil" cx="140" cy="70" r="23" fill="#050505"/>
-              <circle cx="126" cy="56" r="9" fill="white" opacity="0.88"/>
-              <circle cx="155" cy="82" r="4" fill="white" opacity="0.28"/>
-            </g>
-          </g>
-          <path d="M8 70 C70 6 210 6 272 70" fill="none" stroke="rgba(0,0,0,0.08)" stroke-width="1.5"/>
-          <path d="M8 70 C70 134 210 134 272 70" fill="none" stroke="rgba(0,0,0,0.06)" stroke-width="1"/>
-        </svg>
-      </div>
+    <div class="land-center">
+      <h1 class="hero-headline">
+        First to<br><span class="hl">blink</span><br>loses.
+      </h1>
+      <p class="hero-sub">Face a stranger. Camera on. <strong>Don't blink.</strong></p>
 
-      <!-- Left col: text + CTA -->
-      <div class="land-col-left">
-        <h1 class="hero-headline">
-          First to blink<br>
-          <span class="hl">loses.</span>
-        </h1>
-        <p class="hero-sub">
-          Face a stranger on camera. <strong>First to blink loses.</strong> No accounts. No downloads.
-        </p>
-
-        <div class="hero-cta">
-          <button class="btn btn-find" id="btn-random">
-            Find a Stranger
-          </button>
-          <div class="divider-or">or play with a friend</div>
-          <div class="friend-section">
-            <button class="btn btn-create-friend" id="btn-create">
-              Create game → get a code
-            </button>
-            <div class="code-row">
-              <input class="code-input" id="join-input"
-                maxlength="4" placeholder="CODE"
-                autocomplete="off" spellcheck="false"/>
-              <button class="btn btn-join-go" id="btn-join">Join</button>
-            </div>
+      <div class="hero-cta">
+        <button class="btn btn-find" id="btn-random">Find a Stranger</button>
+        <div class="divider-or">or with a friend</div>
+        <div class="friend-section">
+          <button class="btn btn-create-friend" id="btn-create">Create room → get a code</button>
+          <div class="code-row">
+            <input class="code-input" id="join-input" maxlength="4" placeholder="CODE" autocomplete="off" spellcheck="false"/>
+            <button class="btn btn-join-go" id="btn-join">Join</button>
           </div>
-        </div>
-      </div>
-
-      <!-- Right col: big interactive eye (desktop only) -->
-      <div class="land-col-right">
-        <div class="hero-eye-wrap" id="big-eye-wrap">
-          <svg class="hero-eye-svg" width="320" height="160" viewBox="0 0 280 140" fill="none">
-            <defs>
-              <radialGradient id="iris-gd" cx="42%" cy="36%" r="58%">
-                <stop offset="0%" stop-color="#ff8a9a"/>
-                <stop offset="30%" stop-color="#ff2d55"/>
-                <stop offset="100%" stop-color="#5a0018"/>
-              </radialGradient>
-              <filter id="eye-glow-d">
-                <feGaussianBlur stdDeviation="7" result="b"/>
-                <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
-              </filter>
-              <clipPath id="eye-clip-d">
-                <path d="M8 70 C70 6 210 6 272 70 C210 134 70 134 8 70Z"/>
-              </clipPath>
-            </defs>
-            <ellipse cx="140" cy="70" rx="130" ry="60" fill="rgba(255,45,85,0.04)"/>
-            <path d="M8 70 C70 6 210 6 272 70 C210 134 70 134 8 70Z" fill="#f2f2f8"/>
-            <g clip-path="url(#eye-clip-d)">
-              <g id="big-iris-desktop" style="will-change:transform">
-                <circle cx="140" cy="70" r="50" fill="url(#iris-gd)" filter="url(#eye-glow-d)"/>
-                <circle cx="140" cy="70" r="40" fill="none" stroke="rgba(255,80,60,0.22)" stroke-width="1.5"/>
-                <circle cx="140" cy="70" r="30" fill="none" stroke="rgba(200,20,40,0.15)" stroke-width="1"/>
-                <circle id="big-pupil-desktop" cx="140" cy="70" r="23" fill="#050505"/>
-                <circle cx="126" cy="56" r="9" fill="white" opacity="0.88"/>
-                <circle cx="155" cy="82" r="4" fill="white" opacity="0.28"/>
-              </g>
-            </g>
-            <path d="M8 70 C70 6 210 6 272 70" fill="none" stroke="rgba(0,0,0,0.08)" stroke-width="1.5"/>
-            <path d="M8 70 C70 134 210 134 272 70" fill="none" stroke="rgba(0,0,0,0.06)" stroke-width="1"/>
-          </svg>
         </div>
       </div>
     </div>
@@ -1218,63 +1120,44 @@ function cleanup(){
   myReady=theirReady=false; againReady={me:false,them:false};
 }
 
-/* ── Landing: 3D mouse-tracking eye ── */
+/* ── Landing eye tracking ── */
 (function(){
   let mx = window.innerWidth/2, my = window.innerHeight/2;
   let irisX=0, irisY=0, tiltX=0, tiltY=0;
-
   document.addEventListener('mousemove', e => { mx=e.clientX; my=e.clientY; });
-
-  /* On mobile: tilt on device orientation */
   window.addEventListener('deviceorientation', e => {
-    if(e.gamma!=null){ mx = window.innerWidth/2 + (e.gamma/45)*window.innerWidth*0.4; }
-    if(e.beta!=null){  my = window.innerHeight/2 + ((e.beta-45)/45)*window.innerHeight*0.3; }
+    if(e.gamma!=null) mx = window.innerWidth/2 + (e.gamma/45)*window.innerWidth*0.4;
+    if(e.beta!=null)  my = window.innerHeight/2 + ((e.beta-45)/45)*window.innerHeight*0.3;
   });
-
+  function getActiveEyeEls(){
+    const d = document.getElementById('big-iris-desktop');
+    if(d && d.getBoundingClientRect().width > 0) {
+      return { iris: d, pupil: document.getElementById('big-pupil-desktop'), wrap: document.getElementById('big-eye-wrap') };
+    }
+    return { iris: document.getElementById('big-iris'), pupil: document.getElementById('big-pupil'), wrap: document.getElementById('big-eye-wrap-mobile') };
+  }
   function tick(){
-    const wrap = $('big-eye-wrap');
-    const bigIris = $('big-iris');
-    const bigPupil = $('big-pupil');
-    if(!wrap || !bigIris){ requestAnimationFrame(tick); return; }
-
+    if(!document.getElementById('s-land').classList.contains('active')){ requestAnimationFrame(tick); return; }
+    const { iris, pupil, wrap } = getActiveEyeEls();
+    if(!iris || !wrap){ requestAnimationFrame(tick); return; }
     const rect = wrap.getBoundingClientRect();
-    const cx = rect.left + rect.width/2;
-    const cy = rect.top + rect.height/2;
-
-    const dx = mx - cx;
-    const dy = my - cy;
-    const dist = Math.sqrt(dx*dx + dy*dy);
-    const maxRadius = Math.max(window.innerWidth, window.innerHeight) * 0.45;
-    const norm = Math.min(dist / maxRadius, 1);
+    if(!rect.width){ requestAnimationFrame(tick); return; }
+    const cx = rect.left + rect.width/2, cy = rect.top + rect.height/2;
+    const dx = mx - cx, dy = my - cy;
+    const norm = Math.min(Math.sqrt(dx*dx+dy*dy) / (Math.max(window.innerWidth,window.innerHeight)*0.4), 1);
     const angle = Math.atan2(dy, dx);
-
-    const maxIris = 24;
-    const targetIrisX = Math.cos(angle) * norm * maxIris;
-    const targetIrisY = Math.sin(angle) * norm * maxIris;
-
-    irisX += (targetIrisX - irisX) * 0.09;
-    irisY += (targetIrisY - irisY) * 0.09;
-
-    const tW = window.innerWidth, tH = window.innerHeight;
-    const maxTilt = 18;
-    const targetTiltY = ((mx - tW/2) / (tW/2)) * maxTilt;
-    const targetTiltX = -((my - tH/2) / (tH/2)) * maxTilt;
-
-    tiltX += (targetTiltX - tiltX) * 0.06;
-    tiltY += (targetTiltY - tiltY) * 0.06;
-
-    bigIris.style.transform = `translate(${irisX}px,${irisY}px)`;
-    bigPupil.style.transform = `translate(${irisX*0.35}px,${irisY*0.35}px)`;
-    wrap.style.transform = `perspective(700px) rotateX(${tiltX}deg) rotateY(${tiltY}deg)`;
-
+    irisX += (Math.cos(angle)*norm*20 - irisX) * 0.08;
+    irisY += (Math.sin(angle)*norm*20 - irisY) * 0.08;
+    tiltX += (-((my-window.innerHeight/2)/(window.innerHeight/2))*14 - tiltX) * 0.05;
+    tiltY += (((mx-window.innerWidth/2)/(window.innerWidth/2))*14 - tiltY) * 0.05;
+    iris.style.transform = `translate(${irisX}px,${irisY}px)`;
+    wrap.style.transform = `perspective(600px) rotateX(${tiltX}deg) rotateY(${tiltY}deg)`;
     requestAnimationFrame(tick);
   }
   tick();
-
-  /* Nav iris periodic blink */
   function blinkNav(){
-    const ni = $('nav-iris');
-    if(ni){ ni.style.transform='scaleY(0.04)'; setTimeout(()=>{ ni.style.transform='scaleY(1)'; },130); }
+    const g = document.getElementById('nav-iris-g-el');
+    if(g){ g.style.transform='scaleY(0.05)'; g.style.transformOrigin='center'; setTimeout(()=>{ g.style.transform='scaleY(1)'; },130); }
     setTimeout(blinkNav, 2800 + Math.random()*3200);
   }
   blinkNav();
