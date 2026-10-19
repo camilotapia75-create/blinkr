@@ -116,23 +116,28 @@ html,body{
 ───────────────────────────────────────────── */
 #s-land{align-items:stretch;justify-content:stretch}
 
-.land-hero{
+#eye-canvas{
+  position:fixed;inset:0;
   width:100%;height:100%;
-  display:flex;flex-direction:column;
-  background:#0a0a0a;
+  display:block;
+  pointer-events:none;
 }
 
-/* Nav */
+.land-ui{
+  position:fixed;inset:0;
+  display:flex;flex-direction:column;
+  pointer-events:none;
+}
+
 .land-nav{
   flex-shrink:0;
   display:flex;align-items:center;justify-content:space-between;
-  padding:18px 24px;
-  border-bottom:1px solid var(--border);
+  padding:20px 28px;
+  pointer-events:all;
   animation:fadeUp 0.35s var(--ease-spring) both;
 }
-.nav-logo{display:flex;align-items:center;gap:10px}
 .nav-wordmark{
-  font-size:1rem;font-weight:800;letter-spacing:-0.03em;color:var(--text-1);
+  font-size:1.05rem;font-weight:800;letter-spacing:-0.03em;color:var(--text-1);
 }
 .nav-live{
   display:flex;align-items:center;gap:6px;
@@ -143,54 +148,35 @@ html,body{
   background:var(--success);box-shadow:0 0 6px var(--success);
   animation:livepulse 2s ease-in-out infinite;
 }
-@keyframes livepulse{
-  0%,100%{opacity:1}
-  50%    {opacity:0.5}
-}
+@keyframes livepulse{0%,100%{opacity:1}50%{opacity:0.5}}
 
-/* Body scroll area */
-.land-body{
-  flex:1;overflow-y:auto;
+.land-center{
+  flex:1;
   display:flex;flex-direction:column;
-  align-items:center;justify-content:center;
-  padding:40px 24px 56px;
-  gap:0;
+  align-items:center;justify-content:flex-end;
+  padding:0 24px 52px;
+  pointer-events:all;
 }
 
-/* Eye SVG */
-.hero-eye-wrap{
-  margin-bottom:32px;
-  animation:fadeUp 0.4s 0.05s var(--ease-spring) both;
-  cursor:none;
-}
-.hero-eye-svg{
-  display:block;
-  overflow:visible;
-  filter:drop-shadow(0 0 28px rgba(255,45,85,0.2));
-}
-
-/* Headline */
 .hero-headline{
   font-size:clamp(3rem,11vw,5.2rem);
-  font-weight:900;
-  line-height:0.96;
-  letter-spacing:-0.04em;
-  color:var(--text-1);
-  text-align:center;
-  margin-bottom:18px;
+  font-weight:900;line-height:0.96;letter-spacing:-0.04em;
+  color:var(--text-1);text-align:center;
+  margin-bottom:16px;
   animation:fadeUp 0.4s 0.1s var(--ease-spring) both;
+  text-shadow:0 2px 40px rgba(0,0,0,0.9);
 }
 .hero-headline .hl{color:var(--accent);display:block}
 
 .hero-sub{
   font-size:0.95rem;color:var(--text-2);line-height:1.65;
   text-align:center;max-width:300px;
-  margin-bottom:36px;
+  margin-bottom:28px;
   animation:fadeUp 0.4s 0.14s var(--ease-spring) both;
+  text-shadow:0 1px 20px rgba(0,0,0,0.9);
 }
 .hero-sub strong{color:var(--accent);font-weight:600}
 
-/* CTA */
 .hero-cta{
   width:100%;max-width:340px;
   display:flex;flex-direction:column;gap:10px;
@@ -200,8 +186,7 @@ html,body{
   width:100%;background:var(--accent);
   color:#fff;border-radius:10px;padding:17px 24px;
   font-size:1rem;font-weight:700;letter-spacing:0.01em;
-  box-shadow:0 4px 24px var(--accent-glow);
-  border:none;
+  box-shadow:0 4px 24px var(--accent-glow);border:none;
 }
 .btn-find:hover{
   background:#e8002a;transform:translateY(-2px);
@@ -213,22 +198,22 @@ html,body{
   font-weight:500;letter-spacing:0.08em;text-transform:uppercase;
 }
 .divider-or::before,.divider-or::after{
-  content:'';flex:1;height:1px;background:var(--border);
+  content:'';flex:1;height:1px;background:rgba(255,255,255,0.1);
 }
 .friend-section{display:flex;flex-direction:column;gap:8px}
 .btn-create-friend{
-  width:100%;background:transparent;
-  color:var(--text-2);border:1px solid var(--border);
+  width:100%;background:rgba(255,255,255,0.06);
+  color:var(--text-2);border:1px solid rgba(255,255,255,0.1);
   border-radius:10px;padding:13px 18px;font-size:0.88rem;font-weight:600;
   text-align:left;
 }
 .btn-create-friend:hover{
-  background:rgba(255,255,255,0.04);border-color:var(--border-hi);color:var(--text-1);
+  background:rgba(255,255,255,0.1);border-color:rgba(255,255,255,0.18);color:var(--text-1);
 }
 .code-row{display:flex;gap:8px}
 .code-input{
-  flex:1;background:rgba(255,255,255,0.04);
-  border:1px solid var(--border);border-radius:10px;
+  flex:1;background:rgba(255,255,255,0.06);
+  border:1px solid rgba(255,255,255,0.1);border-radius:10px;
   color:var(--text-1);font-family:inherit;
   font-size:1.1rem;font-weight:800;letter-spacing:6px;
   text-align:center;text-transform:uppercase;
@@ -247,30 +232,12 @@ html,body{
 .btn-join-go:hover{background:#e8002a;transform:translateY(-1px)}
 
 @media(min-width:780px){
-  .land-body{
-    flex-direction:row;
-    align-items:center;
-    justify-content:center;
-    gap:72px;
-    padding:0 80px;
-    overflow:hidden;
+  .land-center{
+    align-items:flex-end;justify-content:center;
+    padding:0 8% 0 0;
   }
-  .land-col-left{
-    flex:1;max-width:420px;
-    display:flex;flex-direction:column;
-  }
-  .hero-headline,.hero-sub{text-align:left}
-  .hero-eye-wrap{ margin-bottom:0 }
-  .hero-cta{ max-width:360px }
-  .land-col-right{
-    flex:0 0 auto;
-    display:flex;align-items:center;justify-content:center;
-  }
-  .hero-eye-wrap.mobile-hero{ display:none }
-}
-@media(max-width:779px){
-  .land-col-right{ display:none }
-  .land-col-left{ width:100%;max-width:360px }
+  .hero-headline,.hero-sub{text-align:right}
+  .hero-cta{max-width:360px;align-self:flex-end}
 }
 
 /* ─────────────────────────────────────────────
@@ -1120,47 +1087,217 @@ function cleanup(){
   myReady=theirReady=false; againReady={me:false,them:false};
 }
 
-/* ── Landing eye tracking ── */
+/* ── Canvas Eye ── */
 (function(){
-  let mx = window.innerWidth/2, my = window.innerHeight/2;
-  let irisX=0, irisY=0, tiltX=0, tiltY=0;
-  document.addEventListener('mousemove', e => { mx=e.clientX; my=e.clientY; });
-  window.addEventListener('deviceorientation', e => {
-    if(e.gamma!=null) mx = window.innerWidth/2 + (e.gamma/45)*window.innerWidth*0.4;
-    if(e.beta!=null)  my = window.innerHeight/2 + ((e.beta-45)/45)*window.innerHeight*0.3;
+  const canvas = document.getElementById('eye-canvas');
+  const ctx    = canvas.getContext('2d');
+  let mx, my, irisX=0, irisY=0, blinkProg=0, t=0;
+
+  /* Pre-generate fiber params once — avoids random flicker each frame */
+  const NFIBERS = 400;
+  const fibers  = Array.from({length:NFIBERS}, ()=>({
+    a:    Math.random()*Math.PI*2,
+    len:  0.48 + Math.random()*0.44,
+    w:    0.4  + Math.random()*0.9,
+    hue:  20   + Math.random()*35,
+    sat:  45   + Math.random()*35,
+    lit:  18   + Math.random()*24,
+    alp:  0.35 + Math.random()*0.55,
+    curl: (Math.random()-0.5)*0.22
+  }));
+
+  function resize(){
+    canvas.width  = window.innerWidth;
+    canvas.height = window.innerHeight;
+    mx = canvas.width/2;
+    my = canvas.height/2;
+  }
+  window.addEventListener('resize', resize);
+  resize();
+
+  document.addEventListener('mousemove', e=>{ mx=e.clientX; my=e.clientY; });
+  window.addEventListener('deviceorientation', e=>{
+    if(e.gamma!=null) mx = innerWidth/2  + (e.gamma/45)*innerWidth*0.35;
+    if(e.beta !=null) my = innerHeight/2 + ((e.beta-45)/45)*innerHeight*0.25;
   });
-  function getActiveEyeEls(){
-    const d = document.getElementById('big-iris-desktop');
-    if(d && d.getBoundingClientRect().width > 0) {
-      return { iris: d, pupil: document.getElementById('big-pupil-desktop'), wrap: document.getElementById('big-eye-wrap') };
+
+  let opening=false;
+  setTimeout(()=>{ opening=true; }, 350);
+
+  function frame(){
+    t += 0.016;
+    const W=canvas.width, H=canvas.height;
+
+    if(opening && blinkProg<1) blinkProg=Math.min(1, blinkProg+0.014);
+
+    const base  = Math.min(W,H);
+    const EW    = base*0.68;
+    const EHmax = base*0.26;
+    const breath= 0.97 + Math.sin(t*0.55)*0.03;
+    const EH    = EHmax * blinkProg * breath;
+
+    const eyeOffX = W > 780 ? -W*0.12 : 0;
+    const cx = W*0.5 + eyeOffX;
+    const cy = H*0.46;
+
+    /* Iris tracking */
+    const dx   = mx-cx, dy=my-cy;
+    const dist = Math.sqrt(dx*dx+dy*dy);
+    const norm = Math.min(dist/(Math.max(W,H)*0.42), 1);
+    const ang  = Math.atan2(dy, dx);
+    const maxS = EW*0.11;
+    irisX += (Math.cos(ang)*norm*maxS - irisX)*0.07;
+    irisY += (Math.sin(ang)*norm*maxS*0.5 - irisY)*0.07;
+
+    const IX = cx+irisX;
+    const IY = cy+irisY*blinkProg;
+    const irisR = Math.min(EH*0.9, EW*0.42);
+    const pScale = 0.94 - norm*0.28;
+
+    ctx.clearRect(0,0,W,H);
+    ctx.fillStyle='#0a0a0a';
+    ctx.fillRect(0,0,W,H);
+
+    if(blinkProg>0.2){
+      const ag=ctx.createRadialGradient(IX,IY,0,IX,IY,EW*0.65);
+      ag.addColorStop(0, `rgba(130,95,20,${0.07*blinkProg})`);
+      ag.addColorStop(1,'rgba(0,0,0,0)');
+      ctx.fillStyle=ag; ctx.fillRect(0,0,W,H);
     }
-    return { iris: document.getElementById('big-iris'), pupil: document.getElementById('big-pupil'), wrap: document.getElementById('big-eye-wrap-mobile') };
+
+    if(EH<2){ requestAnimationFrame(frame); return; }
+
+    const ePath=()=>{
+      ctx.beginPath();
+      ctx.moveTo(cx-EW,cy);
+      ctx.bezierCurveTo(cx-EW*0.58,cy-EH*1.18, cx+EW*0.58,cy-EH*1.18, cx+EW,cy);
+      ctx.bezierCurveTo(cx+EW*0.58,cy+EH*0.76, cx-EW*0.58,cy+EH*0.76, cx-EW,cy);
+      ctx.closePath();
+    };
+
+    ctx.save(); ePath(); ctx.clip();
+
+    /* Sclera */
+    const sg=ctx.createRadialGradient(cx,cy-EH*0.1,EH*0.04,cx,cy,EW*0.88);
+    sg.addColorStop(0,'#f4ead8'); sg.addColorStop(0.5,'#ede2cc');
+    sg.addColorStop(0.85,'#d9cebc'); sg.addColorStop(1,'#c9bea8');
+    ctx.fillStyle=sg; ctx.fillRect(cx-EW,cy-EH*2.5,EW*2,EH*5);
+
+    /* Sclera veins */
+    ctx.save();
+    ctx.strokeStyle=`rgba(210,90,90,${0.15+Math.sin(t*0.4)*0.02})`;
+    ctx.lineWidth=0.85;
+    [[cx-EW*0.55,cy-EH*0.09,cx-EW*0.35,cy-EH*0.18,cx-EW*0.14,cy-EH*0.06],
+     [cx-EW*0.52,cy+EH*0.1, cx-EW*0.30,cy+EH*0.15,cx-EW*0.10,cy+EH*0.05],
+     [cx+EW*0.50,cy-EH*0.06,cx+EW*0.30,cy-EH*0.13,cx+EW*0.11,cy-EH*0.04]
+    ].forEach(([x1,y1,cpx,cpy,x2,y2])=>{
+      ctx.beginPath(); ctx.moveTo(x1,y1);
+      ctx.quadraticCurveTo(cpx,cpy,x2,y2); ctx.stroke();
+    });
+    ctx.restore();
+
+    if(irisR>2){
+      /* Iris depth shadow */
+      const id=ctx.createRadialGradient(IX,IY,irisR*0.7,IX,IY,irisR*1.06);
+      id.addColorStop(0,'rgba(0,0,0,0)'); id.addColorStop(1,'rgba(0,0,0,0.42)');
+      ctx.fillStyle=id; ctx.beginPath(); ctx.arc(IX,IY,irisR*1.06,0,Math.PI*2); ctx.fill();
+
+      /* Iris base — warm amber */
+      const ig=ctx.createRadialGradient(IX,IY-irisR*0.06,irisR*0.07,IX,IY,irisR);
+      ig.addColorStop(0,'#a07c22'); ig.addColorStop(0.22,'#7d5c10');
+      ig.addColorStop(0.52,'#52390b'); ig.addColorStop(0.80,'#301e05');
+      ig.addColorStop(1,'#1b0f02');
+      ctx.fillStyle=ig; ctx.beginPath(); ctx.arc(IX,IY,irisR,0,Math.PI*2); ctx.fill();
+
+      /* Fiber texture */
+      ctx.save();
+      ctx.beginPath(); ctx.arc(IX,IY,irisR*0.97,0,Math.PI*2); ctx.clip();
+      ctx.globalCompositeOperation='screen';
+      for(const f of fibers){
+        const sr=irisR*0.10, er=irisR*f.len*0.95, cpr=er*0.52;
+        ctx.globalAlpha=f.alp*0.58;
+        ctx.strokeStyle=`hsl(${f.hue},${f.sat}%,${f.lit}%)`;
+        ctx.lineWidth=f.w;
+        ctx.beginPath();
+        ctx.moveTo(IX+Math.cos(f.a)*sr, IY+Math.sin(f.a)*sr);
+        ctx.quadraticCurveTo(
+          IX+Math.cos(f.a+f.curl)*cpr, IY+Math.sin(f.a+f.curl)*cpr,
+          IX+Math.cos(f.a)*er,         IY+Math.sin(f.a)*er
+        );
+        ctx.stroke();
+      }
+      ctx.restore();
+
+      /* Limbal ring */
+      const lr=ctx.createRadialGradient(IX,IY,irisR*0.76,IX,IY,irisR);
+      lr.addColorStop(0,'rgba(0,0,0,0)'); lr.addColorStop(0.5,'rgba(0,0,0,0.4)');
+      lr.addColorStop(1,'rgba(0,0,0,0.9)');
+      ctx.fillStyle=lr; ctx.beginPath(); ctx.arc(IX,IY,irisR,0,Math.PI*2); ctx.fill();
+
+      /* Pupil */
+      const pr=irisR*0.36*pScale;
+      const pg=ctx.createRadialGradient(IX,IY-pr*0.08,0,IX,IY,pr);
+      pg.addColorStop(0,'#1a1008'); pg.addColorStop(0.65,'#070401');
+      pg.addColorStop(1,'#000000');
+      ctx.fillStyle=pg; ctx.beginPath(); ctx.arc(IX,IY,pr,0,Math.PI*2); ctx.fill();
+
+      /* Specular highlights */
+      ctx.save();
+      ctx.beginPath(); ctx.arc(IX,IY,irisR,0,Math.PI*2); ctx.clip();
+      ctx.globalAlpha=0.9;
+      const h1=ctx.createRadialGradient(IX-irisR*0.28,IY-irisR*0.30,0,IX-irisR*0.28,IY-irisR*0.30,irisR*0.19);
+      h1.addColorStop(0,'rgba(255,255,255,0.96)');
+      h1.addColorStop(0.4,'rgba(255,255,255,0.48)');
+      h1.addColorStop(1,'rgba(255,255,255,0)');
+      ctx.fillStyle=h1;
+      ctx.beginPath();
+      ctx.ellipse(IX-irisR*0.28,IY-irisR*0.30,irisR*0.12,irisR*0.08,-0.4,0,Math.PI*2);
+      ctx.fill();
+      ctx.globalAlpha=0.5;
+      const h2=ctx.createRadialGradient(IX+irisR*0.30,IY-irisR*0.17,0,IX+irisR*0.30,IY-irisR*0.17,irisR*0.07);
+      h2.addColorStop(0,'rgba(255,255,255,0.88)'); h2.addColorStop(1,'rgba(255,255,255,0)');
+      ctx.fillStyle=h2;
+      ctx.beginPath(); ctx.arc(IX+irisR*0.30,IY-irisR*0.17,irisR*0.05,0,Math.PI*2); ctx.fill();
+      ctx.restore();
+    }
+
+    /* Eyelid shadows */
+    const us=ctx.createLinearGradient(cx,cy-EH*1.18,cx,cy-EH*0.28);
+    us.addColorStop(0,'rgba(0,0,0,0.76)'); us.addColorStop(1,'rgba(0,0,0,0)');
+    ctx.fillStyle=us; ctx.fillRect(cx-EW,cy-EH*2.5,EW*2,EH*2.5);
+
+    const ls=ctx.createLinearGradient(cx,cy+EH*0.76,cx,cy+EH*0.18);
+    ls.addColorStop(0,'rgba(0,0,0,0.62)'); ls.addColorStop(1,'rgba(0,0,0,0)');
+    ctx.fillStyle=ls; ctx.fillRect(cx-EW,cy,EW*2,EH);
+
+    ctx.restore(); /* end clip */
+
+    /* Eyelid edge line */
+    ctx.save();
+    ctx.strokeStyle='rgba(255,255,255,0.06)'; ctx.lineWidth=1.5;
+    ePath(); ctx.stroke();
+    ctx.restore();
+
+    /* Legibility vignettes */
+    const lv=ctx.createLinearGradient(0,0,W*0.18,0);
+    lv.addColorStop(0,'rgba(10,10,10,0.92)'); lv.addColorStop(1,'rgba(10,10,10,0)');
+    ctx.fillStyle=lv; ctx.fillRect(0,0,W*0.18,H);
+
+    const rv=ctx.createLinearGradient(W,0,W*0.82,0);
+    rv.addColorStop(0,'rgba(10,10,10,0.92)'); rv.addColorStop(1,'rgba(10,10,10,0)');
+    ctx.fillStyle=rv; ctx.fillRect(W*0.82,0,W*0.18,H);
+
+    const bv=ctx.createLinearGradient(0,H,0,H*0.58);
+    bv.addColorStop(0,'rgba(10,10,10,0.94)'); bv.addColorStop(1,'rgba(10,10,10,0)');
+    ctx.fillStyle=bv; ctx.fillRect(0,H*0.58,W,H*0.42);
+
+    const tv=ctx.createLinearGradient(0,0,0,H*0.13);
+    tv.addColorStop(0,'rgba(10,10,10,0.72)'); tv.addColorStop(1,'rgba(10,10,10,0)');
+    ctx.fillStyle=tv; ctx.fillRect(0,0,W,H*0.13);
+
+    requestAnimationFrame(frame);
   }
-  function tick(){
-    if(!document.getElementById('s-land').classList.contains('active')){ requestAnimationFrame(tick); return; }
-    const { iris, pupil, wrap } = getActiveEyeEls();
-    if(!iris || !wrap){ requestAnimationFrame(tick); return; }
-    const rect = wrap.getBoundingClientRect();
-    if(!rect.width){ requestAnimationFrame(tick); return; }
-    const cx = rect.left + rect.width/2, cy = rect.top + rect.height/2;
-    const dx = mx - cx, dy = my - cy;
-    const norm = Math.min(Math.sqrt(dx*dx+dy*dy) / (Math.max(window.innerWidth,window.innerHeight)*0.4), 1);
-    const angle = Math.atan2(dy, dx);
-    irisX += (Math.cos(angle)*norm*20 - irisX) * 0.08;
-    irisY += (Math.sin(angle)*norm*20 - irisY) * 0.08;
-    tiltX += (-((my-window.innerHeight/2)/(window.innerHeight/2))*14 - tiltX) * 0.05;
-    tiltY += (((mx-window.innerWidth/2)/(window.innerWidth/2))*14 - tiltY) * 0.05;
-    iris.style.transform = `translate(${irisX}px,${irisY}px)`;
-    wrap.style.transform = `perspective(600px) rotateX(${tiltX}deg) rotateY(${tiltY}deg)`;
-    requestAnimationFrame(tick);
-  }
-  tick();
-  function blinkNav(){
-    const g = document.getElementById('nav-iris-g-el');
-    if(g){ g.style.transform='scaleY(0.05)'; g.style.transformOrigin='center'; setTimeout(()=>{ g.style.transform='scaleY(1)'; },130); }
-    setTimeout(blinkNav, 2800 + Math.random()*3200);
-  }
-  blinkNav();
+  frame();
 })();
 </script>
 </body>
