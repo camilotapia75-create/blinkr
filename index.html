@@ -4,200 +4,682 @@
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
 <title>Blinker — Don't Blink</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
 <style>
+/* ── Reset ── */
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
-:root{
-  --bg:#0a0a0f;--surface:#13131a;--surface2:#1d1d2a;
-  --accent:#7c3aed;--accent2:#a855f7;
-  --red:#ef4444;--green:#22c55e;
-  --text:#f0f0f5;--muted:#8888aa;--border:#2a2a3d;
-  --glow:rgba(124,58,237,.35);
-}
-html,body{height:100%;font-family:'Segoe UI',system-ui,sans-serif;background:var(--bg);color:var(--text);overflow:hidden}
 
-.screen{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;opacity:0;pointer-events:none;transition:opacity .35s}
+/* ── Tokens ── */
+:root{
+  --bg:        #08080f;
+  --surface:   #0f0f1a;
+  --surface2:  #14141f;
+  --surface3:  #1c1c2e;
+  --border:    rgba(255,255,255,0.08);
+  --border-hi: rgba(255,255,255,0.14);
+  --text-1:    #f0f0fa;
+  --text-2:    rgba(240,240,250,0.65);
+  --text-3:    rgba(240,240,250,0.35);
+  --accent:    #7c3aed;
+  --accent-mid:#9f5bef;
+  --accent-hi: #a855f7;
+  --accent-glow:   rgba(124,58,237,0.38);
+  --accent-subtle: rgba(124,58,237,0.1);
+  --success: #4ade80;
+  --danger:  #f87171;
+  --ease-spring: cubic-bezier(0.16,1,0.3,1);
+  --ease-out:    cubic-bezier(0,0,0.2,1);
+}
+
+/* ── Base ── */
+html,body{
+  height:100%;
+  font-family:'Inter',system-ui,sans-serif;
+  font-feature-settings:'cv02','cv03','cv04','cv11';
+  -webkit-font-smoothing:antialiased;
+  -moz-osx-font-smoothing:grayscale;
+  background:
+    radial-gradient(ellipse 80% 60% at -5% -5%,  rgba(124,58,237,0.22) 0%, transparent 55%),
+    radial-gradient(ellipse 60% 70% at 105% 105%, rgba(168,85,247,0.18) 0%, transparent 55%),
+    radial-gradient(ellipse 50% 50% at 50% 50%,   rgba(20,20,40,0.6)    0%, transparent 80%),
+    var(--bg);
+  color:var(--text-1);
+  overflow:hidden;
+}
+
+/* Noise overlay */
+body::after{
+  content:'';
+  position:fixed;inset:0;
+  z-index:9999;pointer-events:none;
+  opacity:0.028;
+  background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  background-size:180px 180px;
+}
+
+/* ── Screens ── */
+.screen{
+  position:fixed;inset:0;
+  display:flex;align-items:center;justify-content:center;
+  opacity:0;pointer-events:none;
+  transition:opacity 0.4s var(--ease-out);
+}
 .screen.active{opacity:1;pointer-events:all}
 
-.btn{display:inline-block;padding:13px 34px;border:none;border-radius:50px;cursor:pointer;font-size:1rem;font-weight:700;transition:transform .15s,box-shadow .15s}
-.btn-primary{background:linear-gradient(135deg,var(--accent),var(--accent2));color:#fff;box-shadow:0 0 30px var(--glow)}
-.btn-primary:hover{transform:translateY(-2px);box-shadow:0 0 50px var(--glow)}
-.btn-primary:disabled{opacity:.5;cursor:not-allowed;transform:none}
-.btn-secondary{background:transparent;color:var(--muted);border:1px solid var(--border)}
-.btn-secondary:hover{color:var(--text);border-color:var(--muted)}
-.btn-danger{background:var(--red);color:#fff;box-shadow:0 0 20px rgba(239,68,68,.3)}
-.btn-danger:hover{transform:translateY(-2px);box-shadow:0 0 40px rgba(239,68,68,.4)}
+/* ── Buttons ── */
+.btn{
+  display:inline-flex;align-items:center;justify-content:center;gap:8px;
+  border:none;cursor:pointer;font-family:inherit;font-weight:600;
+  white-space:nowrap;text-decoration:none;outline:none;
+  transition:
+    transform 0.15s var(--ease-spring),
+    box-shadow 0.15s var(--ease-spring),
+    background 0.15s var(--ease-spring),
+    border-color 0.15s var(--ease-spring),
+    color 0.15s var(--ease-spring);
+}
+.btn:active{transform:scale(0.96)!important}
+.btn:disabled{opacity:0.4;cursor:not-allowed;pointer-events:none}
 
-/* ── landing ── */
-.land{display:flex;flex-direction:column;align-items:center;gap:28px;text-align:center;padding:32px}
-.logo-row{display:flex;align-items:center;gap:18px}
-.eye-wrap{width:72px;height:44px;background:#fff;border-radius:50%;display:flex;align-items:center;justify-content:center;box-shadow:0 0 30px var(--glow),0 0 0 2px var(--accent);animation:glow 3s ease-in-out infinite}
-@keyframes glow{0%,100%{box-shadow:0 0 20px var(--glow),0 0 0 2px var(--accent)}50%{box-shadow:0 0 55px var(--glow),0 0 0 2px var(--accent2)}}
-.eye-ball{width:44px;height:44px;background:#1a0550;border-radius:50%;display:flex;align-items:center;justify-content:center;overflow:hidden;transition:transform .08s}
-.pupil{width:22px;height:22px;background:#000;border-radius:50%;position:relative}
-.pupil::after{content:'';position:absolute;top:4px;left:5px;width:7px;height:7px;background:#fff;border-radius:50%;opacity:.7}
-.logo-text{font-size:3.5rem;font-weight:900;letter-spacing:-2px;background:linear-gradient(135deg,#fff 30%,var(--accent2));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
-.tagline{font-size:1.25rem;color:var(--muted);line-height:1.6}
-.tagline .red{color:var(--red);font-weight:700}
+.btn-primary{
+  background:linear-gradient(135deg,var(--accent),var(--accent-hi));
+  color:#fff;border-radius:50px;padding:13px 32px;font-size:0.95rem;
+  box-shadow:0 0 0 1px rgba(255,255,255,0.12) inset, 0 0 32px var(--accent-glow);
+}
+.btn-primary:hover{
+  transform:translateY(-2px);
+  box-shadow:0 0 0 1px rgba(255,255,255,0.18) inset, 0 0 56px var(--accent-glow), 0 8px 24px rgba(0,0,0,0.35);
+}
 
-.main-actions{display:flex;flex-direction:column;align-items:center;gap:14px;width:100%;max-width:280px}
-.main-actions .btn-primary{width:100%;font-size:1.15rem;padding:16px}
-.divider{display:flex;align-items:center;gap:12px;width:100%;color:var(--muted);font-size:.8rem}
-.divider::before,.divider::after{content:'';flex:1;height:1px;background:var(--border)}
+.btn-secondary{
+  background:rgba(255,255,255,0.05);
+  color:var(--text-2);
+  border:1px solid var(--border);
+  border-radius:50px;padding:12px 26px;font-size:0.9rem;
+  backdrop-filter:blur(8px);
+}
+.btn-secondary:hover{
+  background:rgba(255,255,255,0.09);
+  border-color:var(--border-hi);
+  color:var(--text-1);transform:translateY(-1px);
+}
 
-.friend-row{display:flex;flex-direction:column;align-items:center;gap:10px;width:100%}
-.code-row{display:flex;gap:8px;width:100%}
-.code-input{flex:1;background:var(--surface2);border:1px solid var(--border);border-radius:10px;color:var(--text);font-size:1.2rem;font-weight:700;letter-spacing:4px;text-align:center;text-transform:uppercase;padding:10px 8px;outline:none;transition:border-color .2s}
-.code-input:focus{border-color:var(--accent)}
-.code-input::placeholder{letter-spacing:2px;font-size:.9rem;color:#444}
+.btn-ghost{
+  background:transparent;color:var(--text-3);
+  border-radius:8px;padding:8px 14px;font-size:0.85rem;
+}
+.btn-ghost:hover{background:rgba(255,255,255,0.06);color:var(--text-2)}
 
-/* ── setup / waiting ── */
-.center-col{display:flex;flex-direction:column;align-items:center;gap:22px;text-align:center;padding:32px}
-.spinner{width:48px;height:48px;border:4px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:spin .8s linear infinite}
+.btn-danger{
+  background:rgba(239,68,68,0.12);color:var(--danger);
+  border:1px solid rgba(239,68,68,0.22);border-radius:50px;padding:12px 26px;
+}
+.btn-danger:hover{
+  background:rgba(239,68,68,0.22);
+  box-shadow:0 0 32px rgba(239,68,68,0.2);
+  transform:translateY(-1px);
+}
+
+/* ── Utility ── */
+.hidden{display:none!important}
+
+/* ─────────────────────────────────────────────
+   LANDING
+───────────────────────────────────────────── */
+#s-land .inner{
+  display:flex;flex-direction:column;align-items:center;
+  gap:32px;text-align:center;padding:40px 24px;
+  animation:fadeUp 0.7s var(--ease-spring) both;
+}
+
+/* Eyeball logo */
+.logo-eye{
+  width:80px;height:48px;
+  background:#fff;border-radius:50%;
+  display:flex;align-items:center;justify-content:center;
+  box-shadow:
+    0 0 0 1px rgba(255,255,255,0.15) inset,
+    0 0 32px var(--accent-glow),
+    0 0 80px rgba(124,58,237,0.15);
+  animation:eyeGlow 4s ease-in-out infinite;
+}
+@keyframes eyeGlow{
+  0%,100%{box-shadow:0 0 0 1px rgba(255,255,255,0.12) inset,0 0 24px var(--accent-glow),0 0 60px rgba(124,58,237,0.1)}
+  50%    {box-shadow:0 0 0 1px rgba(255,255,255,0.2) inset,0 0 50px var(--accent-glow),0 0 100px rgba(124,58,237,0.2)}
+}
+.iris{
+  width:48px;height:48px;background:linear-gradient(145deg,#1a0550,#2d0a8a);
+  border-radius:50%;display:flex;align-items:center;justify-content:center;
+  overflow:hidden;transition:transform 0.08s var(--ease-spring);
+}
+.pupil{
+  width:24px;height:24px;background:#000;border-radius:50%;position:relative;
+  box-shadow:0 0 12px rgba(124,58,237,0.5);
+}
+.pupil::after{
+  content:'';position:absolute;top:4px;left:6px;
+  width:7px;height:7px;background:#fff;border-radius:50%;opacity:0.8;
+}
+
+/* Logo wordmark */
+.logo-row{display:flex;align-items:center;gap:20px}
+.logo-word{
+  font-size:3.8rem;font-weight:900;
+  letter-spacing:-0.04em;line-height:1;
+  background:linear-gradient(135deg,#ffffff 25%,var(--accent-hi) 100%);
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;
+}
+
+/* Tagline */
+.tagline{
+  font-size:1.15rem;color:var(--text-2);line-height:1.65;
+  max-width:340px;
+  animation:fadeUp 0.7s 0.1s var(--ease-spring) both;
+}
+.tagline strong{color:var(--danger);font-weight:700}
+
+/* Mode cards */
+.mode-grid{
+  display:flex;flex-direction:column;gap:10px;width:100%;max-width:300px;
+  animation:fadeUp 0.7s 0.18s var(--ease-spring) both;
+}
+
+.btn-find{
+  width:100%;
+  background:linear-gradient(135deg,var(--accent),var(--accent-hi));
+  color:#fff;border-radius:14px;padding:17px 24px;
+  font-size:1.05rem;font-weight:700;
+  box-shadow:
+    0 0 0 1px rgba(255,255,255,0.15) inset,
+    0 0 40px var(--accent-glow),
+    0 8px 32px rgba(0,0,0,0.4);
+}
+.btn-find:hover{
+  transform:translateY(-3px);
+  box-shadow:
+    0 0 0 1px rgba(255,255,255,0.2) inset,
+    0 0 70px var(--accent-glow),
+    0 16px 40px rgba(0,0,0,0.5);
+}
+
+.divider-or{
+  display:flex;align-items:center;gap:12px;
+  color:var(--text-3);font-size:0.78rem;font-weight:500;letter-spacing:0.08em;text-transform:uppercase;
+}
+.divider-or::before,.divider-or::after{
+  content:'';flex:1;height:1px;
+  background:linear-gradient(90deg,transparent,var(--border),transparent);
+}
+
+.friend-section{
+  display:flex;flex-direction:column;gap:8px;width:100%;
+}
+.btn-create-friend{
+  width:100%;background:rgba(255,255,255,0.04);
+  color:var(--text-2);border:1px solid var(--border);
+  border-radius:12px;padding:12px 20px;font-size:0.9rem;font-weight:600;
+  text-align:left;
+  backdrop-filter:blur(8px);
+}
+.btn-create-friend:hover{
+  background:rgba(255,255,255,0.08);border-color:var(--border-hi);
+  color:var(--text-1);transform:translateY(-1px);
+}
+.code-row{display:flex;gap:8px}
+.code-input{
+  flex:1;
+  background:rgba(255,255,255,0.05);
+  border:1px solid var(--border);
+  border-radius:12px;
+  color:var(--text-1);
+  font-family:inherit;font-size:1.2rem;font-weight:800;
+  letter-spacing:6px;text-align:center;text-transform:uppercase;
+  padding:11px 12px;outline:none;
+  transition:border-color 0.2s,box-shadow 0.2s,background 0.2s;
+}
+.code-input::placeholder{letter-spacing:2px;font-size:0.85rem;font-weight:400;color:var(--text-3)}
+.code-input:focus{
+  border-color:var(--accent);
+  background:rgba(124,58,237,0.06);
+  box-shadow:0 0 0 3px rgba(124,58,237,0.15);
+}
+.btn-join-go{
+  border-radius:12px;padding:11px 20px;
+  font-size:0.9rem;font-weight:700;
+  background:linear-gradient(135deg,var(--accent),var(--accent-hi));
+  color:#fff;
+  box-shadow:0 0 0 1px rgba(255,255,255,0.1) inset,0 0 20px var(--accent-glow);
+}
+.btn-join-go:hover{
+  transform:translateY(-1px);
+  box-shadow:0 0 0 1px rgba(255,255,255,0.15) inset,0 0 36px var(--accent-glow);
+}
+
+/* ─────────────────────────────────────────────
+   SETUP
+───────────────────────────────────────────── */
+.setup-inner{
+  display:flex;flex-direction:column;align-items:center;gap:24px;text-align:center;padding:40px;
+  animation:fadeScale 0.5s var(--ease-spring) both;
+}
+.setup-inner h2{font-size:1.5rem;font-weight:800;letter-spacing:-0.02em}
+.setup-inner p{color:var(--text-3);font-size:0.9rem}
+
+.spinner-ring{
+  width:52px;height:52px;position:relative;
+}
+.spinner-ring::before,.spinner-ring::after{
+  content:'';position:absolute;inset:0;
+  border-radius:50%;border:2px solid transparent;
+}
+.spinner-ring::before{
+  border-top-color:var(--accent-hi);
+  animation:spin 0.75s linear infinite;
+}
+.spinner-ring::after{
+  border-bottom-color:rgba(124,58,237,0.25);
+}
 @keyframes spin{to{transform:rotate(360deg)}}
-.pulse-ring{width:80px;height:80px;border-radius:50%;border:3px solid var(--accent);animation:pulse 1.6s ease-out infinite}
-@keyframes pulse{0%{transform:scale(.8);opacity:1}100%{transform:scale(1.8);opacity:0}}
 
-.room-code-box{background:var(--surface2);border:1px solid var(--border);border-radius:12px;padding:16px 28px;text-align:center}
-.room-code-box .code{font-size:2.6rem;font-weight:900;letter-spacing:8px;color:var(--accent2)}
-.room-code-box .hint{font-size:.8rem;color:var(--muted);margin-top:4px}
+/* ─────────────────────────────────────────────
+   SEARCHING
+───────────────────────────────────────────── */
+.search-inner{
+  display:flex;flex-direction:column;align-items:center;gap:28px;text-align:center;padding:40px;
+  animation:fadeUp 0.5s var(--ease-spring) both;
+}
+.search-inner h2{font-size:1.5rem;font-weight:800;letter-spacing:-0.02em}
+.search-inner p{color:var(--text-3);font-size:0.9rem;max-width:260px;line-height:1.6}
 
-/* ── game ── */
-.game-layout{width:100vw;height:100vh;display:grid;grid-template-columns:1fr 260px 1fr}
+.pulse-stack{position:relative;width:80px;height:80px}
+.pulse-ring{
+  position:absolute;inset:0;border-radius:50%;
+  border:1.5px solid var(--accent);
+  animation:pulseOut 2s ease-out infinite;
+}
+.pulse-ring:nth-child(2){animation-delay:0.6s}
+.pulse-ring:nth-child(3){animation-delay:1.2s}
+@keyframes pulseOut{
+  0%  {transform:scale(0.5);opacity:0.8}
+  100%{transform:scale(2.2);opacity:0}
+}
+.pulse-core{
+  position:absolute;inset:20px;border-radius:50%;
+  background:radial-gradient(circle,var(--accent-hi),var(--accent));
+  box-shadow:0 0 20px var(--accent-glow),0 0 50px rgba(124,58,237,0.2);
+  animation:corePulse 2s ease-in-out infinite;
+}
+@keyframes corePulse{
+  0%,100%{transform:scale(1);box-shadow:0 0 20px var(--accent-glow)}
+  50%    {transform:scale(0.9);box-shadow:0 0 35px var(--accent-glow)}
+}
+
+/* ─────────────────────────────────────────────
+   LOBBY (friend code)
+───────────────────────────────────────────── */
+.lobby-inner{
+  display:flex;flex-direction:column;align-items:center;gap:24px;text-align:center;padding:40px;
+  animation:fadeUp 0.5s var(--ease-spring) both;
+}
+.lobby-inner h2{font-size:1.5rem;font-weight:800;letter-spacing:-0.02em}
+
+.code-card{
+  background:rgba(255,255,255,0.04);
+  border:1px solid var(--border);
+  border-radius:20px;padding:28px 40px;
+  backdrop-filter:blur(16px);
+  box-shadow:
+    0 0 0 1px rgba(255,255,255,0.04) inset,
+    0 8px 24px rgba(0,0,0,0.3),
+    0 0 60px rgba(124,58,237,0.08);
+}
+.code-hint{font-size:0.7rem;font-weight:600;letter-spacing:0.12em;text-transform:uppercase;color:var(--text-3);margin-bottom:12px}
+.code-display{
+  font-size:3rem;font-weight:900;letter-spacing:10px;
+  background:linear-gradient(135deg,#fff 20%,var(--accent-hi));
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;
+}
+.code-sub{font-size:0.78rem;color:var(--text-3);margin-top:8px;line-height:1.5}
+
+/* ─────────────────────────────────────────────
+   GAME
+───────────────────────────────────────────── */
+.game-layout{
+  width:100vw;height:100vh;
+  display:grid;grid-template-columns:1fr 280px 1fr;
+}
+
+/* Video panels */
 .vpanel{position:relative;overflow:hidden;background:#000}
 .vpanel video{width:100%;height:100%;object-fit:cover;display:block;transform:scaleX(-1)}
-.vlabel{position:absolute;bottom:12px;left:12px;background:rgba(0,0,0,.6);color:var(--muted);font-size:.75rem;font-weight:600;padding:4px 10px;border-radius:20px;text-transform:uppercase;letter-spacing:1px}
-.blink-flash{position:absolute;inset:0;background:var(--red);opacity:0;pointer-events:none;transition:opacity .1s}
-.blink-flash.flash{opacity:.5}
-.eye-status{position:absolute;top:12px;right:12px;display:flex;align-items:center;gap:6px;background:rgba(0,0,0,.65);padding:5px 12px;border-radius:20px;font-size:.8rem;font-weight:600;color:var(--muted);border:1px solid var(--border)}
-.eye-dot{width:8px;height:8px;border-radius:50%;background:var(--green);transition:background .15s}
-.eye-dot.closed{background:var(--red)}
 
-.hud{display:flex;align-items:center;justify-content:center;flex-direction:column;background:var(--surface);border-left:1px solid var(--border);border-right:1px solid var(--border);padding:24px 16px;z-index:10}
-.hidden{display:none!important}
-#countdown-num{font-size:7rem;font-weight:900;color:var(--accent2);text-shadow:0 0 40px var(--glow);animation:pop .4s ease}
-@keyframes pop{0%{transform:scale(.5);opacity:0}70%{transform:scale(1.1)}100%{transform:scale(1);opacity:1}}
-.hud-live{display:flex;flex-direction:column;align-items:center;gap:16px;width:100%}
-.hud-icon{font-size:2.5rem;animation:blink-icon 3s step-end infinite}
-@keyframes blink-icon{0%,100%{opacity:1}50%{opacity:.1}}
-.hud-text{font-size:1.35rem;font-weight:900;letter-spacing:4px;text-align:center;line-height:1.3}
-.hud-bar-section{width:100%;display:flex;flex-direction:column;gap:8px;margin-top:8px}
-.bar-label{font-size:.7rem;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:1px}
-.blink-meter{width:100%;height:8px;background:var(--surface2);border-radius:4px;overflow:hidden}
-.blink-fill{height:100%;width:0%;background:linear-gradient(90deg,var(--accent),var(--accent2));border-radius:4px;transition:width .3s ease}
-.hud-result{display:flex;flex-direction:column;align-items:center;gap:12px;text-align:center;width:100%}
-#result-emoji{font-size:3.5rem}
-#result-text{font-size:1.4rem;font-weight:900;line-height:1.3}
+/* Vignette on video edges */
+.vpanel::after{
+  content:'';position:absolute;inset:0;pointer-events:none;
+  background:
+    linear-gradient(to right, rgba(8,8,15,0.5) 0%, transparent 25%, transparent 75%, rgba(8,8,15,0.5) 100%),
+    linear-gradient(to bottom, rgba(8,8,15,0.4) 0%, transparent 20%, transparent 80%, rgba(8,8,15,0.4) 100%);
+}
+
+.vlabel{
+  position:absolute;bottom:16px;left:16px;z-index:2;
+  background:rgba(8,8,15,0.7);
+  backdrop-filter:blur(8px);
+  color:var(--text-3);
+  font-size:0.7rem;font-weight:600;letter-spacing:0.12em;text-transform:uppercase;
+  padding:5px 12px;border-radius:20px;
+  border:1px solid var(--border);
+}
+
+.blink-flash{
+  position:absolute;inset:0;
+  background:radial-gradient(circle at center,rgba(248,113,113,0.6),rgba(239,68,68,0.3));
+  opacity:0;pointer-events:none;z-index:3;
+  transition:opacity 0.08s;
+}
+.blink-flash.flash{opacity:1}
+
+/* Eye status badge */
+.eye-status{
+  position:absolute;top:16px;right:16px;z-index:2;
+  display:flex;align-items:center;gap:7px;
+  background:rgba(8,8,15,0.75);
+  backdrop-filter:blur(10px);
+  padding:6px 13px;border-radius:20px;
+  font-size:0.78rem;font-weight:600;color:var(--text-2);
+  border:1px solid var(--border);
+}
+.eye-dot{
+  width:7px;height:7px;border-radius:50%;
+  background:var(--success);
+  box-shadow:0 0 8px var(--success);
+  transition:background 0.15s,box-shadow 0.15s;
+}
+.eye-dot.closed{background:var(--danger);box-shadow:0 0 8px var(--danger)}
+
+/* ── HUD (center column) ── */
+.hud{
+  display:flex;align-items:center;justify-content:center;
+  flex-direction:column;
+  background:rgba(8,8,15,0.82);
+  backdrop-filter:blur(24px);
+  -webkit-backdrop-filter:blur(24px);
+  border-left:1px solid var(--border);
+  border-right:1px solid var(--border);
+  padding:28px 20px;z-index:10;
+  box-shadow:
+    1px 0 0 rgba(255,255,255,0.03) inset,
+    -1px 0 0 rgba(255,255,255,0.03) inset;
+}
+
+/* Countdown */
+#hud-countdown{display:flex;align-items:center;justify-content:center}
+#countdown-num{
+  font-size:6.5rem;font-weight:900;line-height:1;
+  letter-spacing:-0.04em;
+  background:linear-gradient(135deg,#fff 20%,var(--accent-hi));
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;
+  filter:drop-shadow(0 0 30px var(--accent-glow));
+  animation:countPop 0.35s var(--ease-spring);
+}
+@keyframes countPop{
+  from{transform:scale(0.4);opacity:0}
+  70%{transform:scale(1.08)}
+  to{transform:scale(1);opacity:1}
+}
+
+/* Live game HUD */
+.hud-live{display:flex;flex-direction:column;align-items:center;gap:20px;width:100%}
+
+.hud-eye-icon{
+  font-size:2.2rem;
+  filter:drop-shadow(0 0 12px rgba(124,58,237,0.6));
+  animation:eyePulse 2.8s ease-in-out infinite;
+}
+@keyframes eyePulse{
+  0%,100%{filter:drop-shadow(0 0 10px rgba(124,58,237,0.5));transform:scale(1)}
+  50%    {filter:drop-shadow(0 0 24px rgba(168,85,247,0.8));transform:scale(1.06)}
+}
+
+.dont-blink{
+  font-size:1.1rem;font-weight:900;letter-spacing:0.18em;text-align:center;line-height:1.4;
+  background:linear-gradient(135deg,var(--text-1) 0%,var(--accent-hi) 100%);
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;
+}
+
+/* Blink meters */
+.meters{width:100%;display:flex;flex-direction:column;gap:10px;margin-top:4px}
+.meter-row{display:flex;flex-direction:column;gap:5px}
+.meter-label{
+  font-size:0.68rem;font-weight:600;letter-spacing:0.1em;
+  text-transform:uppercase;color:var(--text-3);
+}
+.meter-track{
+  width:100%;height:5px;
+  background:rgba(255,255,255,0.06);
+  border-radius:3px;overflow:hidden;
+}
+.meter-fill{
+  height:100%;width:0%;
+  background:linear-gradient(90deg,var(--accent),var(--accent-hi));
+  border-radius:3px;
+  box-shadow:0 0 8px var(--accent-glow);
+  transition:width 0.35s var(--ease-spring);
+}
+
+/* Next button in HUD */
+.btn-next{
+  width:100%;margin-top:8px;
+  background:rgba(239,68,68,0.1);
+  color:var(--danger);
+  border:1px solid rgba(239,68,68,0.2);
+  border-radius:12px;padding:11px;
+  font-size:0.85rem;font-weight:700;letter-spacing:0.02em;
+}
+.btn-next:hover{
+  background:rgba(239,68,68,0.2);
+  box-shadow:0 0 24px rgba(239,68,68,0.18);
+  transform:translateY(-1px);
+}
+
+/* Result */
+.hud-result{
+  display:flex;flex-direction:column;align-items:center;
+  gap:16px;text-align:center;width:100%;
+  animation:fadeScale 0.4s var(--ease-spring) both;
+}
+.result-emoji{font-size:3.2rem;filter:drop-shadow(0 0 20px rgba(255,255,255,0.2))}
+.result-headline{
+  font-size:1.5rem;font-weight:900;letter-spacing:-0.02em;line-height:1.2;
+}
+.result-sub{font-size:0.82rem;color:var(--text-3);margin-top:2px}
 .result-btns{display:flex;flex-direction:column;gap:8px;width:100%;margin-top:4px}
-.result-waiting{color:var(--muted);font-size:.82rem}
+.result-waiting{font-size:0.78rem;color:var(--text-3);
+  animation:fadeUp 0.3s var(--ease-spring) both}
 
-/* Next button overlay during game */
-.next-btn-wrap{position:absolute;bottom:16px;left:50%;transform:translateX(-50%);z-index:20}
+/* Divider in HUD */
+.hud-divider{
+  width:100%;height:1px;
+  background:linear-gradient(90deg,transparent,var(--border),transparent);
+  margin:4px 0;
+}
 
+/* ── Entry animations ── */
+@keyframes fadeUp{
+  from{opacity:0;transform:translateY(18px)}
+  to  {opacity:1;transform:translateY(0)}
+}
+@keyframes fadeScale{
+  from{opacity:0;transform:scale(0.94)}
+  to  {opacity:1;transform:scale(1)}
+}
+
+/* ── Responsive ── */
 @media(max-width:700px){
-  .game-layout{grid-template-columns:1fr;grid-template-rows:1fr 200px 1fr}
-  .hud{border-left:none;border-right:none;border-top:1px solid var(--border);border-bottom:1px solid var(--border)}
+  .game-layout{
+    grid-template-columns:1fr;
+    grid-template-rows:1fr 220px 1fr;
+  }
+  .hud{
+    border-left:none;border-right:none;
+    border-top:1px solid var(--border);
+    border-bottom:1px solid var(--border);
+  }
 }
 </style>
 </head>
 <body>
 
-<!-- LANDING -->
+<!-- ── LANDING ── -->
 <div id="s-land" class="screen active">
-  <div class="land">
+  <div class="inner">
+
     <div class="logo-row">
-      <div class="eye-wrap"><div class="eye-ball" id="eye-ball"><div class="pupil"></div></div></div>
-      <div class="logo-text">blinker</div>
+      <div class="logo-eye">
+        <div class="iris" id="iris">
+          <div class="pupil"></div>
+        </div>
+      </div>
+      <div class="logo-word">blinker</div>
     </div>
-    <p class="tagline">Stare down a stranger.<br>First to blink <span class="red">loses.</span></p>
 
-    <div class="main-actions">
-      <button class="btn btn-primary" id="btn-random">Find Stranger</button>
+    <p class="tagline">
+      Lock eyes with a stranger.<br>
+      First to blink <strong>loses.</strong>
+    </p>
 
-      <div class="divider">or play with a friend</div>
+    <div class="mode-grid">
+      <button class="btn btn-find" id="btn-random">
+        <span>👁</span> Find a Stranger
+      </button>
 
-      <div class="friend-row">
-        <button class="btn btn-secondary" id="btn-create" style="width:100%">Create Game → get a code</button>
+      <div class="divider-or">or play with a friend</div>
+
+      <div class="friend-section">
+        <button class="btn btn-create-friend" id="btn-create">
+          Create game &nbsp;→&nbsp; get a code
+        </button>
         <div class="code-row">
-          <input class="code-input" id="join-input" maxlength="4" placeholder="CODE" autocomplete="off" spellcheck="false"/>
-          <button class="btn btn-primary" id="btn-join" style="padding:10px 20px">Join</button>
+          <input
+            class="code-input" id="join-input"
+            maxlength="4" placeholder="CODE"
+            autocomplete="off" spellcheck="false"
+          />
+          <button class="btn btn-join-go" id="btn-join">Join</button>
         </div>
       </div>
     </div>
+
   </div>
 </div>
 
-<!-- SETUP -->
+<!-- ── SETUP ── -->
 <div id="s-setup" class="screen">
-  <div class="center-col">
+  <div class="setup-inner">
+    <div class="spinner-ring"></div>
     <h2>Getting ready…</h2>
-    <div class="spinner"></div>
-    <p id="setup-msg" style="color:var(--muted)">Requesting camera access</p>
+    <p id="setup-msg">Requesting camera access</p>
   </div>
 </div>
 
-<!-- SEARCHING (random mode) -->
+<!-- ── SEARCHING ── -->
 <div id="s-search" class="screen">
-  <div class="center-col">
-    <div class="pulse-ring"></div>
-    <h2>Finding a stranger…</h2>
-    <p id="search-status" style="color:var(--muted)">Looking for someone to stare at</p>
-    <button class="btn btn-secondary" id="btn-search-cancel">Cancel</button>
-  </div>
-</div>
-
-<!-- LOBBY (friend code mode) -->
-<div id="s-lobby" class="screen">
-  <div class="center-col">
-    <div class="pulse-ring"></div>
-    <h2 id="lobby-title">Waiting for opponent…</h2>
-    <div id="room-code-box" class="room-code-box hidden">
-      <div class="hint">Share this code with your friend</div>
-      <div class="code" id="room-code-display"></div>
-      <button class="btn btn-secondary" id="btn-copy" style="margin-top:12px;font-size:.85rem;padding:8px 20px">Copy code</button>
+  <div class="search-inner">
+    <div class="pulse-stack">
+      <div class="pulse-ring"></div>
+      <div class="pulse-ring"></div>
+      <div class="pulse-ring"></div>
+      <div class="pulse-core"></div>
     </div>
-    <p id="lobby-status" style="color:var(--muted)"></p>
-    <button class="btn btn-secondary" id="btn-lobby-cancel">Cancel</button>
+    <h2>Finding a stranger…</h2>
+    <p id="search-status">Looking for someone brave enough to stare back</p>
+    <button class="btn btn-ghost" id="btn-search-cancel">Cancel</button>
   </div>
 </div>
 
-<!-- GAME -->
+<!-- ── LOBBY ── -->
+<div id="s-lobby" class="screen">
+  <div class="lobby-inner">
+    <div class="pulse-stack">
+      <div class="pulse-ring"></div>
+      <div class="pulse-ring"></div>
+      <div class="pulse-core"></div>
+    </div>
+    <h2 id="lobby-title">Waiting for your friend…</h2>
+
+    <div id="code-card-wrap" class="code-card hidden">
+      <div class="code-hint">Share this code</div>
+      <div class="code-display" id="room-code-display"></div>
+      <div class="code-sub">Your friend enters this to join</div>
+      <button class="btn btn-secondary" id="btn-copy"
+        style="margin-top:16px;font-size:0.82rem;padding:9px 20px">
+        Copy code
+      </button>
+    </div>
+
+    <p id="lobby-status" style="color:var(--text-3);font-size:0.88rem"></p>
+    <button class="btn btn-ghost" id="btn-lobby-cancel">Cancel</button>
+  </div>
+</div>
+
+<!-- ── GAME ── -->
 <div id="s-game" class="screen">
   <div class="game-layout">
 
-    <div class="vpanel" id="vpanel-opp">
+    <!-- Opponent video -->
+    <div class="vpanel">
       <video id="video-opp" autoplay playsinline></video>
       <div class="vlabel">Opponent</div>
       <div class="blink-flash" id="opp-flash"></div>
     </div>
 
+    <!-- HUD -->
     <div class="hud">
-      <div id="hud-countdown" class="hidden"><span id="countdown-num"></span></div>
 
-      <div id="hud-live" class="hud-live hidden">
-        <div class="hud-icon">👁️</div>
-        <div class="hud-text">DON'T<br>BLINK</div>
-        <div class="hud-bar-section">
-          <div class="bar-label">You</div>
-          <div class="blink-meter"><div class="blink-fill" id="my-fill"></div></div>
-          <div class="bar-label">Them</div>
-          <div class="blink-meter"><div class="blink-fill" id="their-fill"></div></div>
-        </div>
-        <button class="btn btn-danger" id="btn-next" style="margin-top:12px;font-size:.85rem;padding:9px 22px;width:100%">Next →</button>
+      <!-- Countdown -->
+      <div id="hud-countdown" class="hidden">
+        <span id="countdown-num"></span>
       </div>
 
+      <!-- Live -->
+      <div id="hud-live" class="hud-live hidden">
+        <div class="hud-eye-icon">👁</div>
+        <div class="dont-blink">DON'T<br>BLINK</div>
+        <div class="hud-divider"></div>
+        <div class="meters">
+          <div class="meter-row">
+            <div class="meter-label">You</div>
+            <div class="meter-track"><div class="meter-fill" id="my-fill"></div></div>
+          </div>
+          <div class="meter-row">
+            <div class="meter-label">Them</div>
+            <div class="meter-track"><div class="meter-fill" id="their-fill"></div></div>
+          </div>
+        </div>
+        <button class="btn btn-next" id="btn-next">Next →</button>
+      </div>
+
+      <!-- Result -->
       <div id="hud-result" class="hud-result hidden">
-        <div id="result-emoji"></div>
-        <div id="result-text"></div>
+        <div class="result-emoji" id="result-emoji"></div>
+        <div>
+          <div class="result-headline" id="result-headline"></div>
+          <div class="result-sub" id="result-sub"></div>
+        </div>
+        <div class="hud-divider"></div>
         <div class="result-btns">
-          <button class="btn btn-primary" id="btn-again">Play Again</button>
-          <button class="btn btn-danger" id="btn-next-result" style="font-size:.9rem">Next Stranger →</button>
-          <button class="btn btn-secondary" id="btn-home">Home</button>
+          <button class="btn btn-primary" id="btn-again" style="border-radius:12px">Play Again</button>
+          <button class="btn btn-danger" id="btn-next-result">Next Stranger →</button>
+          <button class="btn btn-ghost" id="btn-home">Home</button>
         </div>
         <p class="result-waiting hidden" id="result-waiting">Waiting for opponent…</p>
       </div>
+
     </div>
 
-    <div class="vpanel" id="vpanel-self">
+    <!-- Self video -->
+    <div class="vpanel">
       <video id="video-self" autoplay playsinline muted></video>
       <canvas id="canvas-detect" style="display:none"></canvas>
       <div class="vlabel">You</div>
@@ -211,16 +693,19 @@ html,body{height:100%;font-family:'Segoe UI',system-ui,sans-serif;background:var
   </div>
 </div>
 
-<!-- Firebase (realtime matchmaking queue) -->
+<!-- PeerJS -->
+<script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
+<!-- TensorFlow.js -->
+<script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs-core@4.11.0/dist/tf-core.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs-backend-webgl@4.11.0/dist/tf-backend-webgl.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/face-landmarks-detection@1.0.5/dist/face-landmarks-detection.min.js"></script>
+
 <script type="module">
-import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
-import { getDatabase, ref, set, get, remove, onValue, serverTimestamp, runTransaction, onDisconnect, query, orderByChild, limitToFirst }
+import { initializeApp }    from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
+import { getDatabase, ref, set, get, remove, onDisconnect, runTransaction, query, orderByChild, limitToFirst }
   from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js';
 
-// ─────────────────────────────────────────────────────────────────
-// 🔧 REPLACE THIS with your own Firebase project config
-//    firebase.google.com → New project → Web app → copy config here
-// ─────────────────────────────────────────────────────────────────
+/* ── Firebase config ── */
 const FIREBASE_CONFIG = {
   apiKey:            "PASTE_YOUR_API_KEY",
   authDomain:        "PASTE_YOUR_PROJECT.firebaseapp.com",
@@ -230,21 +715,22 @@ const FIREBASE_CONFIG = {
   messagingSenderId: "PASTE_SENDER_ID",
   appId:             "PASTE_APP_ID"
 };
-// ─────────────────────────────────────────────────────────────────
 
-// Guard: show friendly error if config not filled in
 if(FIREBASE_CONFIG.apiKey.startsWith('PASTE')){
   document.body.innerHTML = `
-    <div style="position:fixed;inset:0;background:#0a0a0f;display:flex;align-items:center;justify-content:center;font-family:system-ui;color:#f0f0f5;text-align:center;padding:32px">
-      <div>
-        <div style="font-size:3rem;margin-bottom:16px">⚙️</div>
-        <h2 style="margin-bottom:12px">Firebase not configured</h2>
-        <p style="color:#8888aa;line-height:1.7;max-width:420px">
-          Open <code style="background:#1d1d2a;padding:2px 6px;border-radius:4px">index.html</code>,
-          find <code style="background:#1d1d2a;padding:2px 6px;border-radius:4px">FIREBASE_CONFIG</code>
-          near the top and paste your Firebase project credentials.<br><br>
-          <a href="https://firebase.google.com" target="_blank" style="color:#a855f7">firebase.google.com</a>
-          → New project → Web app → copy config.
+    <div style="position:fixed;inset:0;background:#08080f;display:flex;align-items:center;justify-content:center;font-family:'Inter',system-ui;color:#f0f0fa;text-align:center;padding:32px">
+      <div style="max-width:400px">
+        <div style="font-size:2.8rem;margin-bottom:20px;filter:drop-shadow(0 0 20px rgba(124,58,237,0.5))">⚙️</div>
+        <h2 style="font-size:1.5rem;font-weight:800;letter-spacing:-0.02em;margin-bottom:12px">Firebase not configured</h2>
+        <p style="color:rgba(240,240,250,0.5);line-height:1.75;font-size:0.9rem">
+          Open <code style="background:rgba(255,255,255,0.08);padding:2px 8px;border-radius:6px;font-size:0.85rem">index.html</code>,
+          find <code style="background:rgba(255,255,255,0.08);padding:2px 8px;border-radius:6px;font-size:0.85rem">FIREBASE_CONFIG</code>
+          near the top and paste your credentials.<br><br>
+          <a href="https://firebase.google.com" target="_blank"
+            style="color:#a855f7;text-decoration:none;font-weight:600">
+            firebase.google.com
+          </a>
+          → New project → Web app → Realtime Database → Test mode
         </p>
       </div>
     </div>`;
@@ -254,66 +740,31 @@ if(FIREBASE_CONFIG.apiKey.startsWith('PASTE')){
 const app = initializeApp(FIREBASE_CONFIG);
 const db  = getDatabase(app);
 
-// ─────────────────────────────────────────────────────────────────
-// PeerJS (WebRTC signaling via peerjs.com free cloud)
-// ─────────────────────────────────────────────────────────────────
-const PEERJS_CDN = document.createElement('script');
-PEERJS_CDN.src = 'https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js';
-document.head.appendChild(PEERJS_CDN);
-await new Promise(res => PEERJS_CDN.onload = res);
-
-// ─────────────────────────────────────────────────────────────────
-// TF.js + face mesh
-// ─────────────────────────────────────────────────────────────────
-async function loadScript(src){
-  const s = document.createElement('script');
-  s.src = src;
-  document.head.appendChild(s);
-  return new Promise(res => s.onload = res);
-}
-await loadScript('https://cdn.jsdelivr.net/npm/@tensorflow/tfjs-core@4.11.0/dist/tf-core.min.js');
-await loadScript('https://cdn.jsdelivr.net/npm/@tensorflow/tfjs-backend-webgl@4.11.0/dist/tf-backend-webgl.min.js');
-await loadScript('https://cdn.jsdelivr.net/npm/@tensorflow-models/face-landmarks-detection@1.0.5/dist/face-landmarks-detection.min.js');
-
-// ─────────────────────────────────────────────────────────────────
-// Helpers
-// ─────────────────────────────────────────────────────────────────
-const $  = id => document.getElementById(id);
-const SCREENS = ['s-land','s-setup','s-search','s-lobby','s-game'];
-function show(id){ SCREENS.forEach(s => $(s).classList.toggle('active', s === id)); }
-function flash(el){ el.classList.add('flash'); setTimeout(() => el.classList.remove('flash'), 400); }
+/* ─────────────────────────────────────────── */
+const $   = id => document.getElementById(id);
+const ALL = ['s-land','s-setup','s-search','s-lobby','s-game'];
+function show(id){ ALL.forEach(s => $(s).classList.toggle('active', s===id)); }
+function flash(el){ el.classList.add('flash'); setTimeout(() => el.classList.remove('flash'), 450); }
 function genCode(){ return Math.random().toString(36).slice(2,6).toUpperCase(); }
 
-// ─────────────────────────────────────────────────────────────────
-// State
-// ─────────────────────────────────────────────────────────────────
-let localStream  = null;
-let detector     = null;
-let peer         = null;
-let conn         = null;   // data channel
-let mediaConn    = null;   // video call
-let gameActive   = false;
-let rafId        = null;
-let closedFrames = 0;
-let blinkSent    = false;
-let myBlinks     = 0, theirBlinks = 0;
-let matchMode    = null;   // 'random' | 'friend'
-let myQueueRef   = null;   // Firebase ref for cleanup
-let againReady   = { me:false, them:false };
+let localStream = null, detector = null;
+let peer = null, conn = null, mediaConn = null;
+let gameActive = false, rafId = null;
+let closedFrames = 0, blinkSent = false;
+let myBlinks = 0, theirBlinks = 0;
+let matchMode = null, myQueueRef = null;
+let myReady = false, theirReady = false;
+let againReady = { me:false, them:false };
 
-const MAX_BLINKS  = 5;
-const EAR_THRESH  = 0.21;
-const BLINK_FRAMES = 2;
+const MAX_BLINKS=5, EAR_THRESH=0.21, BLINK_FRAMES=2;
 
-// ─────────────────────────────────────────────────────────────────
-// Landing buttons
-// ─────────────────────────────────────────────────────────────────
+/* ── Landing ── */
 $('btn-random').onclick = () => startSetup('random');
 $('btn-create').onclick = () => startSetup('friend-host');
 $('btn-join').onclick   = () => {
   const code = $('join-input').value.trim().toUpperCase();
-  if(code.length !== 4){ $('join-input').style.borderColor='var(--red)'; return; }
-  $('join-input').style.borderColor = '';
+  if(code.length!==4){ $('join-input').style.borderColor='var(--danger)'; return; }
+  $('join-input').style.borderColor='';
   startSetup('friend-guest', code);
 };
 $('join-input').onkeydown = e => { if(e.key==='Enter') $('btn-join').click(); };
@@ -321,19 +772,8 @@ $('join-input').onkeydown = e => { if(e.key==='Enter') $('btn-join').click(); };
 $('btn-search-cancel').onclick = () => { cleanup(); show('s-land'); };
 $('btn-lobby-cancel').onclick  = () => { cleanup(); show('s-land'); };
 $('btn-home').onclick          = () => { cleanup(); show('s-land'); };
-$('btn-next').onclick          = () => skipToNext();
-$('btn-next-result').onclick   = () => skipToNext();
-$('btn-again').onclick         = () => {
-  $('btn-again').disabled = true;
-  $('result-waiting').classList.remove('hidden');
-  againReady.me = true;
-  send({ type:'play-again' });
-  if(againReady.me && againReady.them) doPlayAgain();
-};
 
-// ─────────────────────────────────────────────────────────────────
-// Setup flow
-// ─────────────────────────────────────────────────────────────────
+/* ── Setup ── */
 async function startSetup(mode, code){
   matchMode = mode;
   show('s-setup');
@@ -341,27 +781,25 @@ async function startSetup(mode, code){
     await initCamera();
     await initDetector();
   } catch(e){
-    $('setup-msg').textContent = 'Camera error: ' + e.message;
+    $('setup-msg').textContent = '⚠️ ' + e.message;
     return;
   }
-  if(mode === 'random')       { show('s-search'); initPeer(() => findStranger()); }
-  else if(mode === 'friend-host')  { show('s-lobby');  initPeer(() => hostGame()); }
-  else if(mode === 'friend-guest') { show('s-lobby');  initPeer(() => joinGame(code)); }
+  if(mode==='random')      { show('s-search'); initPeer(() => findStranger()); }
+  else if(mode==='friend-host') { show('s-lobby');  initPeer(() => hostGame()); }
+  else                          { show('s-lobby');  initPeer(() => joinGame(code)); }
 }
 
 async function initCamera(){
-  $('setup-msg').textContent = 'Requesting camera access…';
+  $('setup-msg').textContent = 'Requesting camera…';
   localStream = await navigator.mediaDevices.getUserMedia({
     video:{ width:640, height:480, facingMode:'user' }, audio:false
   });
   $('video-self').srcObject = localStream;
   return new Promise(res => { $('video-self').onloadedmetadata = res; });
 }
-
 async function initDetector(){
   $('setup-msg').textContent = 'Loading face AI…';
-  await tf.setBackend('webgl');
-  await tf.ready();
+  await tf.setBackend('webgl'); await tf.ready();
   detector = await faceLandmarksDetection.createDetector(
     faceLandmarksDetection.SupportedModels.MediaPipeFaceMesh,
     { runtime:'tfjs', refineLandmarks:false, maxFaces:1 }
@@ -372,367 +810,290 @@ function initPeer(onReady){
   peer = new Peer();
   peer.on('open', onReady);
   peer.on('error', e => {
-    $('search-status').textContent = 'Connection error: ' + e.message;
+    $('search-status').textContent = 'Connection error — try again';
     $('lobby-status').textContent  = 'Connection error: ' + e.message;
   });
 }
 
-// ─────────────────────────────────────────────────────────────────
-// Random matchmaking via Firebase queue
-// ─────────────────────────────────────────────────────────────────
+/* ── Random matchmaking ── */
 async function findStranger(){
   $('search-status').textContent = 'Searching…';
-
-  // Clean up stale entries (older than 30s)
   const queueRef = ref(db, 'blinker-queue');
   const snap = await get(query(queueRef, orderByChild('ts'), limitToFirst(20)));
   const now = Date.now();
-  if(snap.exists()){
-    snap.forEach(child => {
-      if(now - (child.val().ts || 0) > 30000) remove(ref(db, 'blinker-queue/' + child.key));
-    });
-  }
+  if(snap.exists()) snap.forEach(c => { if(now-(c.val().ts||0)>30000) remove(ref(db,'blinker-queue/'+c.key)); });
 
-  // Try to atomically claim a waiting peer
   const claimed = await claimFromQueue();
   if(claimed){
-    // I'm the caller — call them
     callPeer(claimed);
   } else {
-    // Add myself to queue, wait for incoming call
     await addSelfToQueue();
-    peer.on('connection', c => {
-      conn = c;
-      conn.on('open', () => setupDataChannel());
-    });
+    peer.on('connection', c => { conn=c; conn.on('open', () => setupDataChannel()); });
     peer.on('call', call => {
-      mediaConn = call;
-      call.answer(localStream);
-      call.on('stream', remoteStream => {
-        $('video-opp').srcObject = remoteStream;
-        onBothConnected();
-      });
+      mediaConn=call; call.answer(localStream);
+      call.on('stream', s => { $('video-opp').srcObject=s; onBothConnected(); });
     });
   }
 }
-
 async function claimFromQueue(){
-  const queueRef = ref(db, 'blinker-queue');
-  const snap = await get(query(queueRef, orderByChild('ts'), limitToFirst(10)));
+  const snap = await get(query(ref(db,'blinker-queue'), orderByChild('ts'), limitToFirst(10)));
   if(!snap.exists()) return null;
-
-  for(const child of Object.entries(snap.val() || {})){
-    const [peerId] = child;
-    if(peerId === peer.id) continue;
-
-    // Transaction: atomically delete this entry so only one person claims it
-    let claimed = false;
-    await runTransaction(ref(db, 'blinker-queue/' + peerId), current => {
-      if(current === null) return undefined; // already taken
-      claimed = true;
-      return null; // delete
-    });
-    if(claimed) return peerId;
+  for(const [peerId] of Object.entries(snap.val()||{})){
+    if(peerId===peer.id) continue;
+    let ok=false;
+    await runTransaction(ref(db,'blinker-queue/'+peerId), cur => { if(cur===null) return undefined; ok=true; return null; });
+    if(ok) return peerId;
   }
   return null;
 }
-
 async function addSelfToQueue(){
-  myQueueRef = ref(db, 'blinker-queue/' + peer.id);
-  await set(myQueueRef, { ts: Date.now() });
-  onDisconnect(myQueueRef).remove(); // auto-clean if browser closes
+  myQueueRef = ref(db,'blinker-queue/'+peer.id);
+  await set(myQueueRef,{ ts:Date.now() });
+  onDisconnect(myQueueRef).remove();
   $('search-status').textContent = 'Waiting for a stranger…';
 }
-
-function callPeer(targetPeerId){
-  // Remove self from queue if there
-  if(myQueueRef){ remove(myQueueRef); myQueueRef = null; }
-
-  // Open data channel first
-  conn = peer.connect(targetPeerId, { reliable:true });
+function callPeer(targetId){
+  if(myQueueRef){ remove(myQueueRef); myQueueRef=null; }
+  conn = peer.connect(targetId,{ reliable:true });
   conn.on('open', () => setupDataChannel());
-
-  // Then call with video
-  mediaConn = peer.call(targetPeerId, localStream);
-  mediaConn.on('stream', remoteStream => {
-    $('video-opp').srcObject = remoteStream;
-    onBothConnected();
-  });
+  mediaConn = peer.call(targetId, localStream);
+  mediaConn.on('stream', s => { $('video-opp').srcObject=s; onBothConnected(); });
 }
 
-// ─────────────────────────────────────────────────────────────────
-// Friend code mode
-// ─────────────────────────────────────────────────────────────────
+/* ── Friend code ── */
 function hostGame(){
   const code = genCode();
-  const hostId = 'BLINKER-' + code;
-
-  $('lobby-title').textContent       = 'Waiting for your friend…';
-  $('room-code-display').textContent = code;
-  $('room-code-box').classList.remove('hidden');
-
+  $('lobby-title').textContent        = 'Waiting for your friend…';
+  $('room-code-display').textContent  = code;
+  $('code-card-wrap').classList.remove('hidden');
   $('btn-copy').onclick = () => {
     navigator.clipboard.writeText(code).then(() => {
-      $('btn-copy').textContent = 'Copied!';
-      setTimeout(() => { $('btn-copy').textContent = 'Copy code'; }, 1500);
+      $('btn-copy').textContent = '✓ Copied!';
+      setTimeout(() => { $('btn-copy').textContent='Copy code'; }, 1800);
     });
   };
-
-  // Reconnect peer with custom ID
   peer.destroy();
-  peer = new Peer('BLINKER-' + code);
+  peer = new Peer('BLINKER-'+code);
   peer.on('open', () => {
-    peer.on('connection', c => { conn = c; conn.on('open', () => setupDataChannel()); });
+    peer.on('connection', c => { conn=c; conn.on('open', () => setupDataChannel()); });
     peer.on('call', call => {
-      mediaConn = call;
-      call.answer(localStream);
-      call.on('stream', remote => { $('video-opp').srcObject = remote; onBothConnected(); });
+      mediaConn=call; call.answer(localStream);
+      call.on('stream', s => { $('video-opp').srcObject=s; onBothConnected(); });
     });
   });
   peer.on('error', e => {
-    if(e.type === 'unavailable-id'){
-      $('lobby-status').textContent = 'Code conflict, generating new one…';
-      setTimeout(hostGame, 500);
-    }
+    if(e.type==='unavailable-id'){ setTimeout(hostGame, 500); }
   });
 }
-
 function joinGame(code){
   $('lobby-title').textContent = 'Connecting…';
-  $('lobby-status').textContent = 'Finding your friend…';
-  $('room-code-box').classList.add('hidden');
-
-  const hostId = 'BLINKER-' + code;
-  conn = peer.connect(hostId, { reliable:true });
+  $('lobby-status').textContent= 'Looking for your friend…';
+  const hid = 'BLINKER-'+code;
+  conn = peer.connect(hid,{ reliable:true });
   conn.on('open', () => {
-    $('lobby-status').textContent = 'Connected! Waiting for video…';
+    $('lobby-status').textContent='Connected! Starting…';
     setupDataChannel();
     peer.on('call', call => {
-      mediaConn = call;
-      call.answer(localStream);
-      call.on('stream', remote => { $('video-opp').srcObject = remote; onBothConnected(); });
+      mediaConn=call; call.answer(localStream);
+      call.on('stream', s => { $('video-opp').srcObject=s; onBothConnected(); });
     });
   });
-  conn.on('error', () => { $('lobby-status').textContent = 'Could not find that code.'; });
+  conn.on('error', () => { $('lobby-status').textContent='Could not find that code.'; });
 }
 
-// ─────────────────────────────────────────────────────────────────
-// Shared connection logic
-// ─────────────────────────────────────────────────────────────────
-function setupDataChannel(){
-  conn.on('data', onMessage);
-  conn.on('close', handleOpponentLeft);
-}
-
+/* ── Shared connection ── */
+function setupDataChannel(){ conn.on('data', onMessage); conn.on('close', handleLeft); }
 function send(msg){ if(conn && conn.open) conn.send(msg); }
 
-let myReady = false, theirReady = false;
 function onBothConnected(){
-  // Remove from Firebase queue if still there
-  if(myQueueRef){ remove(myQueueRef); myQueueRef = null; }
-  show('s-game');
-  resetHUD();
-  myReady = true; theirReady = false;
+  if(myQueueRef){ remove(myQueueRef); myQueueRef=null; }
+  show('s-game'); resetHUD();
+  myReady=true; theirReady=false;
   send({ type:'ready' });
-  checkBothReady();
+  check();
 }
-function checkBothReady(){ if(myReady && theirReady) startCountdown(); }
+function check(){ if(myReady && theirReady) startCountdown(); }
 
 function onMessage(msg){
-  if(msg.type === 'ready')      { theirReady = true; checkBothReady(); }
-  else if(msg.type === 'blink') { onOpponentBlink(); }
-  else if(msg.type === 'play-again'){
-    againReady.them = true;
+  if(msg.type==='ready')      { theirReady=true; check(); }
+  else if(msg.type==='blink') { onOpponentBlink(); }
+  else if(msg.type==='play-again'){
+    againReady.them=true;
     if(againReady.me && againReady.them) doPlayAgain();
-    else $('result-waiting').textContent = 'Opponent is ready — waiting for you…';
+    else $('result-waiting').textContent='Opponent is ready — waiting for you…';
   }
-  else if(msg.type === 'next')  { handleOpponentLeft(); }
+  else if(msg.type==='next')  { handleLeft(); }
 }
-
-function handleOpponentLeft(){
+function handleLeft(){
   if(!$('s-game').classList.contains('active')) return;
-  gameActive = false;
-  if(rafId){ cancelAnimationFrame(rafId); rafId = null; }
+  gameActive=false;
+  if(rafId){ cancelAnimationFrame(rafId); rafId=null; }
   $('hud-live').classList.add('hidden');
   $('hud-countdown').classList.add('hidden');
   $('hud-result').classList.remove('hidden');
-  $('result-emoji').textContent  = '👋';
-  $('result-text').innerHTML     = '<span style="color:var(--muted)">Opponent left.</span>';
-  $('btn-again').disabled        = true;
-  $('btn-next-result').classList.remove('hidden');
+  $('result-emoji').textContent='👋';
+  $('result-headline').innerHTML='<span style="color:var(--text-3)">Opponent left.</span>';
+  $('result-sub').textContent='';
+  $('btn-again').disabled=true;
   $('result-waiting').classList.add('hidden');
 }
 
-// ─────────────────────────────────────────────────────────────────
-// Skip to next stranger
-// ─────────────────────────────────────────────────────────────────
+/* ── Next ── */
 function skipToNext(){
-  send({ type:'next' }); // tell opponent we're leaving
-  const keepStream = localStream;  // preserve camera
-  const keepDetector = detector;
-
-  // Tear down connection but keep camera
-  gameActive = false;
-  if(rafId){ cancelAnimationFrame(rafId); rafId = null; }
-  if(mediaConn){ mediaConn.close(); mediaConn = null; }
-  if(conn){ conn.close(); conn = null; }
-  if(peer){ peer.destroy(); peer = null; }
-  $('video-opp').srcObject = null;
-
-  localStream = keepStream;
-  detector    = keepDetector;
-  myReady = false; theirReady = false;
-  againReady = { me:false, them:false };
-
-  // Jump straight back to searching
+  send({ type:'next' });
+  const ks=localStream, kd=detector;
+  gameActive=false;
+  if(rafId){ cancelAnimationFrame(rafId); rafId=null; }
+  if(mediaConn){ mediaConn.close(); mediaConn=null; }
+  if(conn){ conn.close(); conn=null; }
+  if(peer){ peer.destroy(); peer=null; }
+  $('video-opp').srcObject=null;
+  localStream=ks; detector=kd;
+  myReady=theirReady=false; againReady={me:false,them:false};
   show('s-search');
-  $('search-status').textContent = 'Finding next stranger…';
+  $('search-status').textContent='Finding next stranger…';
   initPeer(() => findStranger());
 }
+$('btn-next').onclick        = skipToNext;
+$('btn-next-result').onclick = skipToNext;
 
-// ─────────────────────────────────────────────────────────────────
-// Countdown
-// ─────────────────────────────────────────────────────────────────
+/* ── Countdown ── */
 function startCountdown(){
   $('hud-countdown').classList.remove('hidden');
   $('hud-live').classList.add('hidden');
   $('hud-result').classList.add('hidden');
-  gameActive = false;
-
-  let n = 3;
-  $('countdown-num').textContent = n;
-  const tick = setInterval(() => {
+  gameActive=false;
+  let n=3;
+  $('countdown-num').textContent=n;
+  const t=setInterval(()=>{
     n--;
-    if(n <= 0){
-      clearInterval(tick);
-      $('countdown-num').textContent = 'GO!';
-      setTimeout(() => {
+    if(n<=0){
+      clearInterval(t);
+      $('countdown-num').textContent='GO!';
+      setTimeout(()=>{
         $('hud-countdown').classList.add('hidden');
         $('hud-live').classList.remove('hidden');
         startGame();
-      }, 600);
-    } else {
-      $('countdown-num').textContent = n;
-    }
+      }, 700);
+    } else { $('countdown-num').textContent=n; }
   }, 1000);
 }
 
-// ─────────────────────────────────────────────────────────────────
-// Blink detection
-// ─────────────────────────────────────────────────────────────────
+/* ── Game / blink detection ── */
 function startGame(){
-  gameActive = true; blinkSent = false; closedFrames = 0;
-  myBlinks = 0; theirBlinks = 0; updateMeters();
+  gameActive=true; blinkSent=false; closedFrames=0;
+  myBlinks=0; theirBlinks=0; updateMeters();
   detectionLoop();
 }
-
 function detectionLoop(){
-  const vid = $('video-self');
+  const vid=$('video-self');
   async function loop(){
     if(!gameActive) return;
-    if(vid.readyState === 4){
+    if(vid.readyState===4){
       try{
-        const faces = await detector.estimateFaces(vid, { flipHorizontal:false });
+        const faces = await detector.estimateFaces(vid,{flipHorizontal:false});
         if(faces.length){
           const ear = avgEAR(faces[0].keypoints);
           const closed = ear < EAR_THRESH;
-          $('eye-dot').classList.toggle('closed', closed);
+          $('eye-dot').classList.toggle('closed',closed);
           $('eye-label').textContent = closed ? 'Eyes closing' : 'Eyes open';
-          if(closed){ closedFrames++; } else { closedFrames = 0; blinkSent = false; }
-          if(closedFrames >= BLINK_FRAMES && !blinkSent){ blinkSent = true; onMyBlink(); }
+          if(closed){ closedFrames++; } else { closedFrames=0; blinkSent=false; }
+          if(closedFrames>=BLINK_FRAMES && !blinkSent){ blinkSent=true; onMyBlink(); }
         }
-      } catch(_){}
+      }catch(_){}
     }
-    rafId = requestAnimationFrame(loop);
+    rafId=requestAnimationFrame(loop);
   }
   loop();
 }
-
-function avgEAR(kp){ return (ear(kp,386,374,263,362) + ear(kp,159,145,33,133)) / 2; }
-function ear(kp, tI, bI, lI, rI){
-  const t=kp[tI], b=kp[bI], l=kp[lI], r=kp[rI];
+function avgEAR(kp){ return (ear(kp,386,374,263,362)+ear(kp,159,145,33,133))/2; }
+function ear(kp,tI,bI,lI,rI){
+  const t=kp[tI],b=kp[bI],l=kp[lI],r=kp[rI];
   if(!t||!b||!l||!r) return 1;
-  return Math.hypot(l.x-r.x,l.y-r.y) > 0
-    ? Math.hypot(t.x-b.x,t.y-b.y) / Math.hypot(l.x-r.x,l.y-r.y) : 1;
+  const h=Math.hypot(l.x-r.x,l.y-r.y);
+  return h>0 ? Math.hypot(t.x-b.x,t.y-b.y)/h : 1;
 }
-
 function onMyBlink(){
   if(!gameActive) return;
-  gameActive = false;
-  if(rafId){ cancelAnimationFrame(rafId); rafId = null; }
+  gameActive=false;
+  if(rafId){ cancelAnimationFrame(rafId); rafId=null; }
   myBlinks++; updateMeters();
   flash($('self-flash'));
   send({ type:'blink' });
-  setTimeout(() => showResult(false), 400);
+  setTimeout(() => showResult(false), 500);
 }
-
 function onOpponentBlink(){
   if(!gameActive) return;
-  gameActive = false;
-  if(rafId){ cancelAnimationFrame(rafId); rafId = null; }
+  gameActive=false;
+  if(rafId){ cancelAnimationFrame(rafId); rafId=null; }
   theirBlinks++; updateMeters();
   flash($('opp-flash'));
-  setTimeout(() => showResult(true), 400);
+  setTimeout(() => showResult(true), 500);
 }
 
-// ─────────────────────────────────────────────────────────────────
-// Result
-// ─────────────────────────────────────────────────────────────────
+/* ── Result ── */
 function showResult(won){
   $('hud-live').classList.add('hidden');
   $('hud-countdown').classList.add('hidden');
   $('hud-result').classList.remove('hidden');
-  $('result-emoji').textContent = won ? '🏆' : '😵';
-  $('result-text').innerHTML    = won
-    ? '<span style="color:var(--green)">You won!</span><br><small>They blinked first.</small>'
-    : '<span style="color:var(--red)">You blinked!</span><br><small>Better luck next time.</small>';
-  $('btn-again').disabled = false;
-  $('btn-next-result').classList.remove('hidden');
+  $('result-emoji').textContent=won?'🏆':'😵';
+  $('result-headline').style.background    = won
+    ? 'linear-gradient(135deg,#4ade80,#22c55e)'
+    : 'linear-gradient(135deg,#f87171,#ef4444)';
+  $('result-headline').style.webkitBackgroundClip='text';
+  $('result-headline').style.webkitTextFillColor='transparent';
+  $('result-headline').style.backgroundClip='text';
+  $('result-headline').textContent = won ? 'You won!' : 'You blinked!';
+  $('result-sub').textContent = won ? 'They blinked first.' : 'Better luck next time.';
+  $('btn-again').disabled=false;
   $('result-waiting').classList.add('hidden');
-  againReady = { me:false, them:false };
+  againReady={me:false,them:false};
+  $('btn-again').onclick=()=>{
+    $('btn-again').disabled=true;
+    $('result-waiting').classList.remove('hidden');
+    $('result-waiting').textContent='Waiting for opponent…';
+    againReady.me=true;
+    send({ type:'play-again' });
+    if(againReady.me && againReady.them) doPlayAgain();
+  };
 }
-
 function doPlayAgain(){
-  againReady = { me:false, them:false };
-  myReady = true; theirReady = true;
+  againReady={me:false,them:false};
+  myReady=theirReady=true;
   startCountdown();
 }
 
-// ─────────────────────────────────────────────────────────────────
-// Misc
-// ─────────────────────────────────────────────────────────────────
+/* ── Helpers ── */
 function updateMeters(){
-  $('my-fill').style.width    = Math.min(myBlinks    / MAX_BLINKS * 100, 100) + '%';
-  $('their-fill').style.width = Math.min(theirBlinks / MAX_BLINKS * 100, 100) + '%';
+  $('my-fill').style.width    = Math.min(myBlinks   /MAX_BLINKS*100,100)+'%';
+  $('their-fill').style.width = Math.min(theirBlinks/MAX_BLINKS*100,100)+'%';
 }
-
 function resetHUD(){
-  ['hud-countdown','hud-live','hud-result'].forEach(id => $(id).classList.add('hidden'));
-  myBlinks = 0; theirBlinks = 0; updateMeters();
-  $('btn-next-result').classList.remove('hidden');
+  ['hud-countdown','hud-live','hud-result'].forEach(id=>$(id).classList.add('hidden'));
+  myBlinks=0; theirBlinks=0; updateMeters();
 }
-
 function cleanup(){
-  gameActive = false;
-  if(rafId){ cancelAnimationFrame(rafId); rafId = null; }
-  if(myQueueRef){ remove(myQueueRef); myQueueRef = null; }
-  if(mediaConn){ mediaConn.close(); mediaConn = null; }
-  if(conn){ conn.close(); conn = null; }
-  if(peer){ peer.destroy(); peer = null; }
-  if(localStream){ localStream.getTracks().forEach(t => t.stop()); localStream = null; }
-  $('video-self').srcObject = null;
-  $('video-opp').srcObject  = null;
-  $('join-input').value = '';
-  myReady = false; theirReady = false;
-  againReady = { me:false, them:false };
+  gameActive=false;
+  if(rafId){ cancelAnimationFrame(rafId); rafId=null; }
+  if(myQueueRef){ remove(myQueueRef); myQueueRef=null; }
+  if(mediaConn){ mediaConn.close(); mediaConn=null; }
+  if(conn){ conn.close(); conn=null; }
+  if(peer){ peer.destroy(); peer=null; }
+  if(localStream){ localStream.getTracks().forEach(t=>t.stop()); localStream=null; }
+  $('video-self').srcObject=null;
+  $('video-opp').srcObject=null;
+  $('join-input').value='';
+  myReady=theirReady=false; againReady={me:false,them:false};
 }
 
-// Landing eye blink animation
-const eyeBall = $('eye-ball');
-setInterval(() => {
-  eyeBall.style.transform = 'scaleY(0.05)';
-  setTimeout(() => { eyeBall.style.transform = 'scaleY(1)'; }, 120);
-}, 3500 + Math.random() * 2000);
+/* ── Logo eye blink animation ── */
+const iris = $('iris');
+function blinkLogo(){
+  iris.style.transform='scaleY(0.04)';
+  setTimeout(() => { iris.style.transform='scaleY(1)'; }, 130);
+  setTimeout(blinkLogo, 3000 + Math.random()*3000);
+}
+blinkLogo();
 </script>
 </body>
 </html>
