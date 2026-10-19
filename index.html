@@ -12,22 +12,22 @@
 
 /* ── Tokens ── */
 :root{
-  --bg:        #08080f;
-  --surface:   #0f0f1a;
-  --surface2:  #14141f;
-  --surface3:  #1c1c2e;
-  --border:    rgba(255,255,255,0.08);
+  --bg:        #0a0a0a;
+  --surface:   #111111;
+  --surface2:  #181818;
+  --surface3:  #222222;
+  --border:    rgba(255,255,255,0.07);
   --border-hi: rgba(255,255,255,0.14);
-  --text-1:    #f0f0fa;
-  --text-2:    rgba(240,240,250,0.65);
-  --text-3:    rgba(240,240,250,0.35);
-  --accent:    #7c3aed;
-  --accent-mid:#9f5bef;
-  --accent-hi: #a855f7;
-  --accent-glow:   rgba(124,58,237,0.38);
-  --accent-subtle: rgba(124,58,237,0.1);
-  --success: #4ade80;
-  --danger:  #f87171;
+  --text-1:    #ffffff;
+  --text-2:    rgba(255,255,255,0.52);
+  --text-3:    rgba(255,255,255,0.26);
+  --accent:    #ff2d55;
+  --accent-mid:#ff4d6d;
+  --accent-hi: #ff6b85;
+  --accent-glow:   rgba(255,45,85,0.28);
+  --accent-subtle: rgba(255,45,85,0.08);
+  --success: #30d158;
+  --danger:  #ff2d55;
   --ease-spring: cubic-bezier(0.16,1,0.3,1);
   --ease-out:    cubic-bezier(0,0,0.2,1);
 }
@@ -39,24 +39,11 @@ html,body{
   font-feature-settings:'cv02','cv03','cv04','cv11';
   -webkit-font-smoothing:antialiased;
   -moz-osx-font-smoothing:grayscale;
-  background:
-    radial-gradient(ellipse 80% 60% at -5% -5%,  rgba(124,58,237,0.22) 0%, transparent 55%),
-    radial-gradient(ellipse 60% 70% at 105% 105%, rgba(168,85,247,0.18) 0%, transparent 55%),
-    radial-gradient(ellipse 50% 50% at 50% 50%,   rgba(20,20,40,0.6)    0%, transparent 80%),
-    var(--bg);
+  background:#0a0a0a;
   color:var(--text-1);
   overflow:hidden;
 }
 
-/* Noise overlay */
-body::after{
-  content:'';
-  position:fixed;inset:0;
-  z-index:9999;pointer-events:none;
-  opacity:0.028;
-  background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
-  background-size:180px 180px;
-}
 
 /* ── Screens ── */
 .screen{
@@ -125,352 +112,165 @@ body::after{
 .hidden{display:none!important}
 
 /* ─────────────────────────────────────────────
-   LANDING — full-bleed hero layout
+   LANDING
 ───────────────────────────────────────────── */
 #s-land{align-items:stretch;justify-content:stretch}
 
 .land-hero{
   width:100%;height:100%;
-  display:grid;
-  grid-template-rows:1fr auto;
-  position:relative;overflow:hidden;
+  display:flex;flex-direction:column;
+  background:#0a0a0a;
 }
 
-/* Floating aurora orbs behind the hero */
-.orb{
-  position:absolute;border-radius:50%;
-  filter:blur(100px);pointer-events:none;
-  animation:drift 14s ease-in-out infinite;
-}
-.orb-1{
-  width:600px;height:600px;
-  top:-15%;left:-10%;
-  background:radial-gradient(circle,rgba(124,58,237,0.28),transparent 70%);
-  animation-duration:16s;
-}
-.orb-2{
-  width:500px;height:500px;
-  bottom:-20%;right:-10%;
-  background:radial-gradient(circle,rgba(168,85,247,0.22),transparent 70%);
-  animation-duration:20s;animation-delay:-6s;
-}
-.orb-3{
-  width:300px;height:300px;
-  top:40%;left:55%;
-  background:radial-gradient(circle,rgba(99,102,241,0.18),transparent 70%);
-  animation-duration:12s;animation-delay:-3s;
-}
-@keyframes drift{
-  0%,100%{transform:translate(0,0) scale(1)}
-  33%    {transform:translate(3%,4%) scale(1.06)}
-  66%    {transform:translate(-4%,-2%) scale(0.96)}
-}
-
-/* Dot grid pattern */
-.land-hero::before{
-  content:'';position:absolute;inset:0;z-index:0;
-  background-image:radial-gradient(circle,rgba(255,255,255,0.09) 1px,transparent 1px);
-  background-size:32px 32px;
-  mask-image:radial-gradient(ellipse 90% 80% at 50% 40%,black 30%,transparent 80%);
-}
-
-/* Top nav bar */
+/* Nav */
 .land-nav{
-  position:relative;z-index:2;
+  flex-shrink:0;
   display:flex;align-items:center;justify-content:space-between;
-  padding:24px 40px;
+  padding:18px 24px;
   border-bottom:1px solid var(--border);
-  background:rgba(8,8,15,0.5);backdrop-filter:blur(12px);
-  animation:fadeUp 0.5s var(--ease-spring) both;
+  animation:fadeUp 0.35s var(--ease-spring) both;
 }
-.nav-logo{
-  display:flex;align-items:center;gap:12px;
-}
-.nav-eye{
-  width:32px;height:20px;
-  background:#fff;border-radius:50%;
-  display:flex;align-items:center;justify-content:center;
-  box-shadow:0 0 16px var(--accent-glow);
-}
-.nav-iris{
-  width:20px;height:20px;
-  background:linear-gradient(145deg,#1a0550,#3b12a0);
-  border-radius:50%;display:flex;align-items:center;justify-content:center;
-  overflow:hidden;transition:transform 0.1s ease;
-}
-.nav-pupil{
-  width:10px;height:10px;background:#000;border-radius:50%;position:relative;
-}
-.nav-pupil::after{
-  content:'';position:absolute;top:2px;left:2px;
-  width:3px;height:3px;background:#fff;border-radius:50%;opacity:0.9;
-}
+.nav-logo{display:flex;align-items:center;gap:10px}
 .nav-wordmark{
-  font-size:1.1rem;font-weight:800;letter-spacing:-0.03em;
-  background:linear-gradient(135deg,#fff 30%,var(--accent-hi));
-  -webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;
+  font-size:1rem;font-weight:800;letter-spacing:-0.03em;color:var(--text-1);
 }
-.nav-badge{
+.nav-live{
   display:flex;align-items:center;gap:6px;
-  background:rgba(74,222,128,0.08);
-  border:1px solid rgba(74,222,128,0.18);
-  border-radius:20px;padding:5px 12px;
-  font-size:0.72rem;font-weight:600;color:#4ade80;
-  letter-spacing:0.06em;text-transform:uppercase;
+  font-size:0.72rem;font-weight:500;color:var(--text-3);letter-spacing:0.04em;
 }
-.nav-badge-dot{
-  width:6px;height:6px;border-radius:50%;background:#4ade80;
-  box-shadow:0 0 8px #4ade80;
+.nav-live-dot{
+  width:6px;height:6px;border-radius:50%;
+  background:var(--success);box-shadow:0 0 6px var(--success);
   animation:livepulse 2s ease-in-out infinite;
 }
 @keyframes livepulse{
-  0%,100%{opacity:1;box-shadow:0 0 6px #4ade80}
-  50%    {opacity:0.6;box-shadow:0 0 14px #4ade80}
+  0%,100%{opacity:1}
+  50%    {opacity:0.5}
 }
 
-/* Main hero content */
+/* Body scroll area */
 .land-body{
-  position:relative;z-index:2;
-  display:flex;align-items:center;justify-content:space-between;
-  padding:0 10% 60px;
-  gap:48px;
+  flex:1;overflow-y:auto;
+  display:flex;flex-direction:column;
+  align-items:center;justify-content:center;
+  padding:40px 24px 56px;
+  gap:0;
 }
 
-/* Left: headline + CTA */
-.land-left{
-  flex:1;max-width:520px;
-  display:flex;flex-direction:column;gap:32px;
-  animation:fadeUp 0.7s 0.05s var(--ease-spring) both;
+/* Eye SVG */
+.hero-eye-wrap{
+  margin-bottom:32px;
+  animation:fadeUp 0.4s 0.05s var(--ease-spring) both;
+  cursor:none;
 }
-
-.hero-eyebrow{
-  display:inline-flex;align-items:center;gap:8px;
-  background:var(--accent-subtle);
-  border:1px solid rgba(124,58,237,0.25);
-  border-radius:20px;padding:6px 14px;
-  font-size:0.75rem;font-weight:600;
-  letter-spacing:0.1em;text-transform:uppercase;
-  color:var(--accent-hi);
-  width:fit-content;
-}
-
-.hero-headline{
-  font-size:clamp(2.8rem,5vw,4.4rem);
-  font-weight:900;
-  line-height:1.06;
-  letter-spacing:-0.035em;
-  color:var(--text-1);
-}
-.hero-headline .hl{
-  background:linear-gradient(135deg,#fff 0%,var(--accent-hi) 60%,#e879f9 100%);
-  -webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;
+.hero-eye-svg{
   display:block;
+  overflow:visible;
+  filter:drop-shadow(0 0 28px rgba(255,45,85,0.2));
 }
+
+/* Headline */
+.hero-headline{
+  font-size:clamp(3rem,11vw,5.2rem);
+  font-weight:900;
+  line-height:0.96;
+  letter-spacing:-0.04em;
+  color:var(--text-1);
+  text-align:center;
+  margin-bottom:18px;
+  animation:fadeUp 0.4s 0.1s var(--ease-spring) both;
+}
+.hero-headline .hl{color:var(--accent);display:block}
 
 .hero-sub{
-  font-size:1.1rem;color:var(--text-2);line-height:1.7;max-width:400px;
+  font-size:0.95rem;color:var(--text-2);line-height:1.65;
+  text-align:center;max-width:300px;
+  margin-bottom:36px;
+  animation:fadeUp 0.4s 0.14s var(--ease-spring) both;
 }
-.hero-sub strong{color:var(--danger);font-weight:700}
+.hero-sub strong{color:var(--accent);font-weight:600}
 
+/* CTA */
 .hero-cta{
-  display:flex;flex-direction:column;gap:12px;
-  max-width:340px;
+  width:100%;max-width:340px;
+  display:flex;flex-direction:column;gap:10px;
+  animation:fadeUp 0.4s 0.18s var(--ease-spring) both;
 }
 .btn-find{
-  width:100%;
-  background:linear-gradient(135deg,var(--accent),var(--accent-hi));
-  color:#fff;border-radius:14px;padding:19px 28px;
-  font-size:1.05rem;font-weight:700;letter-spacing:0.01em;
-  box-shadow:
-    0 0 0 1px rgba(255,255,255,0.15) inset,
-    0 0 48px var(--accent-glow),
-    0 12px 40px rgba(0,0,0,0.5);
+  width:100%;background:var(--accent);
+  color:#fff;border-radius:10px;padding:17px 24px;
+  font-size:1rem;font-weight:700;letter-spacing:0.01em;
+  box-shadow:0 4px 24px var(--accent-glow);
+  border:none;
 }
 .btn-find:hover{
-  transform:translateY(-3px);
-  box-shadow:
-    0 0 0 1px rgba(255,255,255,0.22) inset,
-    0 0 80px var(--accent-glow),
-    0 20px 50px rgba(0,0,0,0.6);
+  background:#e8002a;transform:translateY(-2px);
+  box-shadow:0 8px 36px var(--accent-glow),0 2px 8px rgba(0,0,0,0.4);
 }
-
 .divider-or{
   display:flex;align-items:center;gap:12px;
-  color:var(--text-3);font-size:0.75rem;font-weight:500;letter-spacing:0.1em;text-transform:uppercase;
+  color:var(--text-3);font-size:0.72rem;
+  font-weight:500;letter-spacing:0.08em;text-transform:uppercase;
 }
 .divider-or::before,.divider-or::after{
-  content:'';flex:1;height:1px;
-  background:linear-gradient(90deg,transparent,var(--border),transparent);
+  content:'';flex:1;height:1px;background:var(--border);
 }
-
 .friend-section{display:flex;flex-direction:column;gap:8px}
 .btn-create-friend{
-  width:100%;background:rgba(255,255,255,0.04);
+  width:100%;background:transparent;
   color:var(--text-2);border:1px solid var(--border);
-  border-radius:12px;padding:13px 18px;font-size:0.9rem;font-weight:600;
-  text-align:left;backdrop-filter:blur(8px);
+  border-radius:10px;padding:13px 18px;font-size:0.88rem;font-weight:600;
+  text-align:left;
 }
 .btn-create-friend:hover{
-  background:rgba(255,255,255,0.08);border-color:var(--border-hi);
-  color:var(--text-1);transform:translateY(-1px);
+  background:rgba(255,255,255,0.04);border-color:var(--border-hi);color:var(--text-1);
 }
 .code-row{display:flex;gap:8px}
 .code-input{
-  flex:1;background:rgba(255,255,255,0.05);
-  border:1px solid var(--border);border-radius:12px;
+  flex:1;background:rgba(255,255,255,0.04);
+  border:1px solid var(--border);border-radius:10px;
   color:var(--text-1);font-family:inherit;
-  font-size:1.2rem;font-weight:800;letter-spacing:6px;
+  font-size:1.1rem;font-weight:800;letter-spacing:6px;
   text-align:center;text-transform:uppercase;
   padding:12px;outline:none;
-  transition:border-color 0.2s,box-shadow 0.2s,background 0.2s;
+  transition:border-color 0.2s,box-shadow 0.2s;
 }
-.code-input::placeholder{letter-spacing:2px;font-size:0.85rem;font-weight:400;color:var(--text-3)}
+.code-input::placeholder{letter-spacing:2px;font-size:0.82rem;font-weight:400;color:var(--text-3)}
 .code-input:focus{
-  border-color:var(--accent);background:rgba(124,58,237,0.06);
-  box-shadow:0 0 0 3px rgba(124,58,237,0.15);
+  border-color:var(--accent);
+  box-shadow:0 0 0 3px var(--accent-subtle);
 }
 .btn-join-go{
-  border-radius:12px;padding:12px 20px;font-size:0.9rem;font-weight:700;
-  background:linear-gradient(135deg,var(--accent),var(--accent-hi));color:#fff;
-  box-shadow:0 0 0 1px rgba(255,255,255,0.1) inset,0 0 22px var(--accent-glow);
+  border-radius:10px;padding:12px 20px;font-size:0.88rem;font-weight:700;
+  background:var(--accent);color:#fff;border:none;
 }
-.btn-join-go:hover{
-  transform:translateY(-1px);
-  box-shadow:0 0 0 1px rgba(255,255,255,0.16) inset,0 0 40px var(--accent-glow);
-}
+.btn-join-go:hover{background:#e8002a;transform:translateY(-1px)}
 
-/* Right: large eye visual */
-.land-right{
-  flex:0 0 auto;
-  display:flex;align-items:center;justify-content:center;
-  animation:fadeUp 0.7s 0.15s var(--ease-spring) both;
+@media(min-width:780px){
+  .land-body{
+    flex-direction:row;
+    align-items:center;
+    justify-content:center;
+    gap:72px;
+    padding:0 80px;
+    overflow:hidden;
+  }
+  .land-col-left{
+    flex:1;max-width:420px;
+    display:flex;flex-direction:column;
+  }
+  .hero-headline,.hero-sub{text-align:left}
+  .hero-eye-wrap{ margin-bottom:0 }
+  .hero-cta{ max-width:360px }
+  .land-col-right{
+    flex:0 0 auto;
+    display:flex;align-items:center;justify-content:center;
+  }
+  .hero-eye-wrap.mobile-hero{ display:none }
 }
-
-.big-eye-wrap{
-  position:relative;
-  width:280px;height:280px;
-  display:flex;align-items:center;justify-content:center;
-}
-/* Outer ring glow */
-.big-eye-wrap::before,.big-eye-wrap::after{
-  content:'';position:absolute;inset:0;border-radius:50%;
-}
-.big-eye-wrap::before{
-  background:radial-gradient(circle,rgba(124,58,237,0.12) 0%,transparent 70%);
-  animation:bigEyeAura 4s ease-in-out infinite;
-}
-.big-eye-wrap::after{
-  border:1px solid rgba(124,58,237,0.15);
-  animation:ringPulse 4s ease-in-out infinite;
-}
-@keyframes bigEyeAura{
-  0%,100%{transform:scale(1);opacity:0.8}
-  50%    {transform:scale(1.1);opacity:1}
-}
-@keyframes ringPulse{
-  0%,100%{transform:scale(1);opacity:0.4}
-  50%    {transform:scale(1.08);opacity:0.8}
-}
-
-/* The eye shape */
-.big-eye{
-  width:220px;height:130px;
-  background:#f8f8ff;
-  border-radius:50%;
-  display:flex;align-items:center;justify-content:center;
-  position:relative;
-  box-shadow:
-    0 0 0 1px rgba(255,255,255,0.1) inset,
-    0 0 60px rgba(124,58,237,0.4),
-    0 0 120px rgba(124,58,237,0.15),
-    0 0 200px rgba(168,85,247,0.08);
-  animation:bigEyeGlow 4s ease-in-out infinite;
-}
-@keyframes bigEyeGlow{
-  0%,100%{box-shadow:0 0 0 1px rgba(255,255,255,0.1) inset,0 0 50px rgba(124,58,237,0.35),0 0 100px rgba(124,58,237,0.12)}
-  50%    {box-shadow:0 0 0 1px rgba(255,255,255,0.15) inset,0 0 80px rgba(124,58,237,0.55),0 0 160px rgba(168,85,247,0.2)}
-}
-
-.big-iris{
-  width:130px;height:130px;
-  background:
-    radial-gradient(circle at 40% 35%,rgba(100,50,220,0.6),transparent 50%),
-    radial-gradient(circle,#1a0550 0%,#2d0a8a 50%,#0d0030 100%);
-  border-radius:50%;
-  display:flex;align-items:center;justify-content:center;
-  overflow:hidden;
-  will-change:transform;
-  box-shadow:0 0 30px rgba(124,58,237,0.4) inset,0 0 20px rgba(0,0,0,0.6);
-}
-
-.big-pupil{
-  width:62px;height:62px;
-  background:radial-gradient(circle at 40% 35%,#1a1a2a,#000);
-  border-radius:50%;
-  position:relative;
-  box-shadow:0 0 20px rgba(124,58,237,0.3);
-}
-.big-pupil::after{
-  content:'';position:absolute;
-  top:11px;left:13px;
-  width:18px;height:18px;
-  background:radial-gradient(circle,rgba(255,255,255,0.9),rgba(255,255,255,0.4));
-  border-radius:50%;
-}
-.big-pupil::before{
-  content:'';position:absolute;
-  bottom:9px;right:11px;
-  width:8px;height:8px;
-  background:rgba(255,255,255,0.2);
-  border-radius:50%;
-}
-
-/* Iris detail rings */
-.big-iris::before{
-  content:'';position:absolute;
-  width:100%;height:100%;
-  border-radius:50%;
-  border:1px solid rgba(124,58,237,0.2);
-  transform:scale(0.7);
-}
-
-/* Scanning line effect */
-.eye-scan{
-  position:absolute;top:0;left:0;width:100%;height:3px;
-  background:linear-gradient(90deg,transparent,rgba(168,85,247,0.6),transparent);
-  border-radius:2px;
-  animation:scanLine 3s ease-in-out infinite;
-}
-@keyframes scanLine{
-  0%  {top:15%;opacity:0}
-  10% {opacity:1}
-  90% {opacity:1}
-  100%{top:85%;opacity:0}
-}
-
-/* Stats row */
-.hero-stats{
-  display:flex;gap:24px;
-  animation:fadeUp 0.7s 0.25s var(--ease-spring) both;
-}
-.stat{
-  display:flex;flex-direction:column;gap:2px;
-}
-.stat-num{
-  font-size:1.4rem;font-weight:800;letter-spacing:-0.03em;
-  background:linear-gradient(135deg,var(--text-1),var(--accent-hi));
-  -webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;
-}
-.stat-label{font-size:0.7rem;font-weight:500;color:var(--text-3);text-transform:uppercase;letter-spacing:0.1em}
-
-@media(max-width:860px){
-  .land-right{display:none}
-  .land-body{justify-content:center;padding:0 24px 60px}
-  .land-left{max-width:100%;align-items:center;text-align:center}
-  .hero-sub{max-width:100%}
-  .hero-cta{max-width:100%}
-  .hero-stats{justify-content:center}
-  .land-nav{padding:18px 24px}
+@media(max-width:779px){
+  .land-col-right{ display:none }
+  .land-col-left{ width:100%;max-width:360px }
 }
 
 /* ─────────────────────────────────────────────
@@ -751,46 +551,84 @@ body::after{
 <!-- ── LANDING ── -->
 <div id="s-land" class="screen active">
   <div class="land-hero">
-    <div class="orb orb-1"></div>
-    <div class="orb orb-2"></div>
-    <div class="orb orb-3"></div>
-
     <nav class="land-nav">
       <div class="nav-logo">
-        <div class="nav-eye">
-          <div class="nav-iris" id="nav-iris">
-            <div class="nav-pupil"></div>
-          </div>
-        </div>
+        <svg width="26" height="14" viewBox="0 0 52 28" fill="none" id="nav-eye-svg">
+          <defs>
+            <radialGradient id="nav-iris-g" cx="44%" cy="38%" r="55%">
+              <stop offset="0%" stop-color="#ff6b85"/>
+              <stop offset="60%" stop-color="#ff2d55"/>
+              <stop offset="100%" stop-color="#7a0020"/>
+            </radialGradient>
+          </defs>
+          <path d="M2 14 C16 2 36 2 50 14 C36 26 16 26 2 14Z" fill="#f0f0f5"/>
+          <g id="nav-iris-g-el">
+            <circle cx="26" cy="14" r="9" fill="url(#nav-iris-g)"/>
+            <circle cx="26" cy="14" r="4.5" fill="#000"/>
+            <circle cx="22.5" cy="10.5" r="2" fill="white" opacity="0.9"/>
+          </g>
+        </svg>
         <span class="nav-wordmark">blinker</span>
       </div>
-      <div class="nav-badge">
-        <div class="nav-badge-dot"></div>
-        Live now
+      <div class="nav-live">
+        <div class="nav-live-dot"></div>
+        live
       </div>
     </nav>
 
     <div class="land-body">
-      <div class="land-left">
-        <div class="hero-eyebrow">
-          <span>👁</span> AI Blink Detection
-        </div>
+      <!-- Mobile: eye on top -->
+      <div class="hero-eye-wrap mobile-hero" id="big-eye-wrap-mobile">
+        <svg class="hero-eye-svg" width="200" height="100" viewBox="0 0 280 140" fill="none">
+          <defs>
+            <radialGradient id="iris-gm" cx="42%" cy="36%" r="58%">
+              <stop offset="0%" stop-color="#ff8a9a"/>
+              <stop offset="30%" stop-color="#ff2d55"/>
+              <stop offset="100%" stop-color="#5a0018"/>
+            </radialGradient>
+            <filter id="eye-glow-m">
+              <feGaussianBlur stdDeviation="6" result="b"/>
+              <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+            </filter>
+            <clipPath id="eye-clip-m">
+              <path d="M8 70 C70 6 210 6 272 70 C210 134 70 134 8 70Z"/>
+            </clipPath>
+          </defs>
+          <ellipse cx="140" cy="70" rx="120" ry="55" fill="rgba(255,45,85,0.05)"/>
+          <path d="M8 70 C70 6 210 6 272 70 C210 134 70 134 8 70Z" fill="#f2f2f8"/>
+          <g clip-path="url(#eye-clip-m)">
+            <g id="big-iris" style="will-change:transform">
+              <circle cx="140" cy="70" r="50" fill="url(#iris-gm)" filter="url(#eye-glow-m)"/>
+              <circle cx="140" cy="70" r="40" fill="none" stroke="rgba(255,80,60,0.22)" stroke-width="1.5"/>
+              <circle cx="140" cy="70" r="30" fill="none" stroke="rgba(200,20,40,0.15)" stroke-width="1"/>
+              <circle id="big-pupil" cx="140" cy="70" r="23" fill="#050505"/>
+              <circle cx="126" cy="56" r="9" fill="white" opacity="0.88"/>
+              <circle cx="155" cy="82" r="4" fill="white" opacity="0.28"/>
+            </g>
+          </g>
+          <path d="M8 70 C70 6 210 6 272 70" fill="none" stroke="rgba(0,0,0,0.08)" stroke-width="1.5"/>
+          <path d="M8 70 C70 134 210 134 272 70" fill="none" stroke="rgba(0,0,0,0.06)" stroke-width="1"/>
+        </svg>
+      </div>
+
+      <!-- Left col: text + CTA -->
+      <div class="land-col-left">
         <h1 class="hero-headline">
-          Lock eyes.<br>
-          <span class="hl">Don't blink.</span>
+          First to blink<br>
+          <span class="hl">loses.</span>
         </h1>
         <p class="hero-sub">
-          Face a stranger on camera. <strong>First to blink loses.</strong><br>No accounts. No downloads. No mercy.
+          Face a stranger on camera. <strong>First to blink loses.</strong> No accounts. No downloads.
         </p>
 
         <div class="hero-cta">
           <button class="btn btn-find" id="btn-random">
-            Find a Stranger →
+            Find a Stranger
           </button>
           <div class="divider-or">or play with a friend</div>
           <div class="friend-section">
             <button class="btn btn-create-friend" id="btn-create">
-              Create game &nbsp;→&nbsp; get a code
+              Create game → get a code
             </button>
             <div class="code-row">
               <input class="code-input" id="join-input"
@@ -800,31 +638,41 @@ body::after{
             </div>
           </div>
         </div>
-
-        <div class="hero-stats">
-          <div class="stat">
-            <span class="stat-num">127</span>
-            <span class="stat-label">Online now</span>
-          </div>
-          <div class="stat">
-            <span class="stat-num">4.2M</span>
-            <span class="stat-label">Blinks detected</span>
-          </div>
-          <div class="stat">
-            <span class="stat-num">12ms</span>
-            <span class="stat-label">Detection speed</span>
-          </div>
-        </div>
       </div>
 
-      <div class="land-right">
-        <div class="big-eye-wrap" id="big-eye-wrap">
-          <div class="big-eye" id="big-eye">
-            <div class="big-iris" id="big-iris">
-              <div class="big-pupil" id="big-pupil"></div>
-              <div class="eye-scan"></div>
-            </div>
-          </div>
+      <!-- Right col: big interactive eye (desktop only) -->
+      <div class="land-col-right">
+        <div class="hero-eye-wrap" id="big-eye-wrap">
+          <svg class="hero-eye-svg" width="320" height="160" viewBox="0 0 280 140" fill="none">
+            <defs>
+              <radialGradient id="iris-gd" cx="42%" cy="36%" r="58%">
+                <stop offset="0%" stop-color="#ff8a9a"/>
+                <stop offset="30%" stop-color="#ff2d55"/>
+                <stop offset="100%" stop-color="#5a0018"/>
+              </radialGradient>
+              <filter id="eye-glow-d">
+                <feGaussianBlur stdDeviation="7" result="b"/>
+                <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+              </filter>
+              <clipPath id="eye-clip-d">
+                <path d="M8 70 C70 6 210 6 272 70 C210 134 70 134 8 70Z"/>
+              </clipPath>
+            </defs>
+            <ellipse cx="140" cy="70" rx="130" ry="60" fill="rgba(255,45,85,0.04)"/>
+            <path d="M8 70 C70 6 210 6 272 70 C210 134 70 134 8 70Z" fill="#f2f2f8"/>
+            <g clip-path="url(#eye-clip-d)">
+              <g id="big-iris-desktop" style="will-change:transform">
+                <circle cx="140" cy="70" r="50" fill="url(#iris-gd)" filter="url(#eye-glow-d)"/>
+                <circle cx="140" cy="70" r="40" fill="none" stroke="rgba(255,80,60,0.22)" stroke-width="1.5"/>
+                <circle cx="140" cy="70" r="30" fill="none" stroke="rgba(200,20,40,0.15)" stroke-width="1"/>
+                <circle id="big-pupil-desktop" cx="140" cy="70" r="23" fill="#050505"/>
+                <circle cx="126" cy="56" r="9" fill="white" opacity="0.88"/>
+                <circle cx="155" cy="82" r="4" fill="white" opacity="0.28"/>
+              </g>
+            </g>
+            <path d="M8 70 C70 6 210 6 272 70" fill="none" stroke="rgba(0,0,0,0.08)" stroke-width="1.5"/>
+            <path d="M8 70 C70 134 210 134 272 70" fill="none" stroke="rgba(0,0,0,0.06)" stroke-width="1"/>
+          </svg>
         </div>
       </div>
     </div>
@@ -976,7 +824,7 @@ let myReady = false, theirReady = false;
 let againReady = { me:false, them:false };
 
 const MAX_BLINKS=5, EAR_THRESH=0.21, BLINK_FRAMES=2;
-const WINDOW_MS = 20000; // 20-second matching windows
+const WINDOW_MS = 60000; // 60-second matching windows
 
 /* ── Landing ── */
 $('btn-random').onclick = () => startSetup('random');
@@ -1059,11 +907,9 @@ function findStranger(windowOffset=0){
   peer = new Peer(lobbyId);
 
   peer.on('open', () => {
-    // We claimed this window — act as host
-    $('search-status').textContent = 'Waiting for someone…';
+    $('search-status').textContent = 'Waiting for opponent…';
 
     peer.on('connection', c => {
-      // Guest connected data channel
       conn = c;
       conn.on('open', () => setupDataChannel());
     });
@@ -1073,20 +919,48 @@ function findStranger(windowOffset=0){
       call.on('stream', s => { $('video-opp').srcObject=s; onBothConnected(); });
     });
 
-    // Roll to next window if nobody shows up before it expires
+    // Also quietly try to join the PREVIOUS window (handles cross-boundary case)
+    silentJoin(currentWindowId(windowOffset - 1));
+
     const msUntilNextWindow = WINDOW_MS - (Date.now() % WINDOW_MS);
     searchTimeout = setTimeout(() => findStranger(windowOffset+1), msUntilNextWindow + 500);
   });
 
   peer.on('error', e => {
     if(e.type === 'unavailable-id'){
-      // Someone's already hosting this window — join as guest
       joinWindowAsGuest(lobbyId, windowOffset);
     } else {
       $('search-status').textContent = 'Connection error — retrying…';
       searchTimeout = setTimeout(() => findStranger(windowOffset), 3000);
     }
   });
+}
+
+function silentJoin(prevId){
+  const tmp = new Peer();
+  let done = false;
+
+  tmp.on('open', () => {
+    const c = tmp.connect(prevId, { reliable: true });
+
+    c.on('open', () => {
+      if(done || $('s-game').classList.contains('active')){ tmp.destroy(); return; }
+      done = true;
+      if(searchTimeout){ clearTimeout(searchTimeout); searchTimeout=null; }
+      const oldPeer = peer;
+      peer = tmp;
+      conn = c;
+      setupDataChannel();
+      mediaConn = peer.call(prevId, localStream);
+      mediaConn.on('stream', s => { $('video-opp').srcObject=s; onBothConnected(); });
+      if(oldPeer) setTimeout(() => oldPeer.destroy(), 500);
+    });
+
+    c.on('error', () => { if(!done) tmp.destroy(); });
+    setTimeout(() => { if(!done) tmp.destroy(); }, 6000);
+  });
+
+  tmp.on('error', () => tmp.destroy());
 }
 
 function joinWindowAsGuest(lobbyId, windowOffset){
@@ -1102,21 +976,17 @@ function joinWindowAsGuest(lobbyId, windowOffset){
     conn.on('open', () => {
       connected = true;
       setupDataChannel();
-    });
-    conn.on('error', () => {
-      if(!connected) findStranger(windowOffset+1);
-    });
-
-    // Call with video after data channel opens
-    conn.on('open', () => {
       mediaConn = peer.call(lobbyId, localStream);
       mediaConn.on('stream', s => { $('video-opp').srcObject=s; onBothConnected(); });
     });
 
-    // If no stream in 5s the host is already taken, try next window
+    conn.on('error', () => {
+      if(!connected) findStranger(windowOffset+1);
+    });
+
     setTimeout(() => {
       if(!$('s-game').classList.contains('active')) findStranger(windowOffset+1);
-    }, 5000);
+    }, 6000);
   });
 
   peer.on('error', () => findStranger(windowOffset+1));
@@ -1168,7 +1038,6 @@ function setupDataChannel(){ conn.on('data', onMessage); conn.on('close', handle
 function send(msg){ if(conn && conn.open) conn.send(msg); }
 
 function onBothConnected(){
-  if(myQueueRef){ remove(myQueueRef); myQueueRef=null; }
   show('s-game'); resetHUD();
   myReady=true; theirReady=false;
   send({ type:'ready' });
