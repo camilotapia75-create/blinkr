@@ -700,46 +700,7 @@ body::after{
 <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs-backend-webgl@4.11.0/dist/tf-backend-webgl.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/face-landmarks-detection@1.0.5/dist/face-landmarks-detection.min.js"></script>
 
-<script type="module">
-import { initializeApp }    from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
-import { getDatabase, ref, set, get, remove, onDisconnect, runTransaction, query, orderByChild, limitToFirst }
-  from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js';
-
-/* ── Firebase config ── */
-const FIREBASE_CONFIG = {
-  apiKey:            "PASTE_YOUR_API_KEY",
-  authDomain:        "PASTE_YOUR_PROJECT.firebaseapp.com",
-  databaseURL:       "https://PASTE_YOUR_PROJECT-default-rtdb.firebaseio.com",
-  projectId:         "PASTE_YOUR_PROJECT_ID",
-  storageBucket:     "PASTE_YOUR_PROJECT.appspot.com",
-  messagingSenderId: "PASTE_SENDER_ID",
-  appId:             "PASTE_APP_ID"
-};
-
-if(FIREBASE_CONFIG.apiKey.startsWith('PASTE')){
-  document.body.innerHTML = `
-    <div style="position:fixed;inset:0;background:#08080f;display:flex;align-items:center;justify-content:center;font-family:'Inter',system-ui;color:#f0f0fa;text-align:center;padding:32px">
-      <div style="max-width:400px">
-        <div style="font-size:2.8rem;margin-bottom:20px;filter:drop-shadow(0 0 20px rgba(124,58,237,0.5))">⚙️</div>
-        <h2 style="font-size:1.5rem;font-weight:800;letter-spacing:-0.02em;margin-bottom:12px">Firebase not configured</h2>
-        <p style="color:rgba(240,240,250,0.5);line-height:1.75;font-size:0.9rem">
-          Open <code style="background:rgba(255,255,255,0.08);padding:2px 8px;border-radius:6px;font-size:0.85rem">index.html</code>,
-          find <code style="background:rgba(255,255,255,0.08);padding:2px 8px;border-radius:6px;font-size:0.85rem">FIREBASE_CONFIG</code>
-          near the top and paste your credentials.<br><br>
-          <a href="https://firebase.google.com" target="_blank"
-            style="color:#a855f7;text-decoration:none;font-weight:600">
-            firebase.google.com
-          </a>
-          → New project → Web app → Realtime Database → Test mode
-        </p>
-      </div>
-    </div>`;
-  throw new Error('Firebase not configured');
-}
-
-const app = initializeApp(FIREBASE_CONFIG);
-const db  = getDatabase(app);
-
+<script>
 /* ─────────────────────────────────────────── */
 const $   = id => document.getElementById(id);
 const ALL = ['s-land','s-setup','s-search','s-lobby','s-game'];
@@ -752,11 +713,12 @@ let peer = null, conn = null, mediaConn = null;
 let gameActive = false, rafId = null;
 let closedFrames = 0, blinkSent = false;
 let myBlinks = 0, theirBlinks = 0;
-let matchMode = null, myQueueRef = null;
+let matchMode = null, searchTimeout = null;
 let myReady = false, theirReady = false;
 let againReady = { me:false, them:false };
 
 const MAX_BLINKS=5, EAR_THRESH=0.21, BLINK_FRAMES=2;
+const WINDOW_MS = 20000; // 20-second matching windows
 
 /* ── Landing ── */
 $('btn-random').onclick = () => startSetup('random');
@@ -784,9 +746,9 @@ async function startSetup(mode, code){
     $('setup-msg').textContent = '⚠️ ' + e.message;
     return;
   }
-  if(mode==='random')      { show('s-search'); initPeer(() => findStranger()); }
-  else if(mode==='friend-host') { show('s-lobby');  initPeer(() => hostGame()); }
-  else                          { show('s-lobby');  initPeer(() => joinGame(code)); }
+  if(mode==='random')           { show('s-search'); findStranger(); }
+  else if(mode==='friend-host') { show('s-lobby');  initRandomPeer(() => hostGame()); }
+  else                          { show('s-lobby');  initRandomPeer(() => joinGame(code)); }
 }
 
 async function initCamera(){
@@ -806,58 +768,96 @@ async function initDetector(){
   );
 }
 
-function initPeer(onReady){
+function initRandomPeer(onReady){
+  if(peer) peer.destroy();
   peer = new Peer();
   peer.on('open', onReady);
   peer.on('error', e => {
-    $('search-status').textContent = 'Connection error — try again';
-    $('lobby-status').textContent  = 'Connection error: ' + e.message;
+    $('lobby-status').textContent = 'Connection error: ' + e.message;
   });
 }
 
-/* ── Random matchmaking ── */
-async function findStranger(){
-  $('search-status').textContent = 'Searching…';
-  const queueRef = ref(db, 'blinker-queue');
-  const snap = await get(query(queueRef, orderByChild('ts'), limitToFirst(20)));
-  const now = Date.now();
-  if(snap.exists()) snap.forEach(c => { if(now-(c.val().ts||0)>30000) remove(ref(db,'blinker-queue/'+c.key)); });
+/* ── Zero-setup random matchmaking ──────────────────────────────────
+   Uses rotating 20-second time windows as shared lobby IDs.
+   First person in a window registers as host (BLINKER-WIN-{id}).
+   Everyone else who tries gets "unavailable-id" and connects as guest.
+   If no match in ~18s, we roll to the next window automatically.
+──────────────────────────────────────────────────────────────────── */
+function currentWindowId(offset=0){
+  return 'BLINKER-WIN-' + (Math.floor(Date.now() / WINDOW_MS) + offset);
+}
 
-  const claimed = await claimFromQueue();
-  if(claimed){
-    callPeer(claimed);
-  } else {
-    await addSelfToQueue();
-    peer.on('connection', c => { conn=c; conn.on('open', () => setupDataChannel()); });
+function findStranger(windowOffset=0){
+  if(peer){ peer.destroy(); peer=null; }
+  if(searchTimeout){ clearTimeout(searchTimeout); searchTimeout=null; }
+
+  const lobbyId = currentWindowId(windowOffset);
+  $('search-status').textContent = 'Searching…';
+
+  peer = new Peer(lobbyId);
+
+  peer.on('open', () => {
+    // We claimed this window — act as host
+    $('search-status').textContent = 'Waiting for someone…';
+
+    peer.on('connection', c => {
+      // Guest connected data channel
+      conn = c;
+      conn.on('open', () => setupDataChannel());
+    });
     peer.on('call', call => {
-      mediaConn=call; call.answer(localStream);
+      mediaConn = call;
+      call.answer(localStream);
       call.on('stream', s => { $('video-opp').srcObject=s; onBothConnected(); });
     });
-  }
+
+    // Roll to next window if nobody shows up before it expires
+    const msUntilNextWindow = WINDOW_MS - (Date.now() % WINDOW_MS);
+    searchTimeout = setTimeout(() => findStranger(windowOffset+1), msUntilNextWindow + 500);
+  });
+
+  peer.on('error', e => {
+    if(e.type === 'unavailable-id'){
+      // Someone's already hosting this window — join as guest
+      joinWindowAsGuest(lobbyId, windowOffset);
+    } else {
+      $('search-status').textContent = 'Connection error — retrying…';
+      searchTimeout = setTimeout(() => findStranger(windowOffset), 3000);
+    }
+  });
 }
-async function claimFromQueue(){
-  const snap = await get(query(ref(db,'blinker-queue'), orderByChild('ts'), limitToFirst(10)));
-  if(!snap.exists()) return null;
-  for(const [peerId] of Object.entries(snap.val()||{})){
-    if(peerId===peer.id) continue;
-    let ok=false;
-    await runTransaction(ref(db,'blinker-queue/'+peerId), cur => { if(cur===null) return undefined; ok=true; return null; });
-    if(ok) return peerId;
-  }
-  return null;
-}
-async function addSelfToQueue(){
-  myQueueRef = ref(db,'blinker-queue/'+peer.id);
-  await set(myQueueRef,{ ts:Date.now() });
-  onDisconnect(myQueueRef).remove();
-  $('search-status').textContent = 'Waiting for a stranger…';
-}
-function callPeer(targetId){
-  if(myQueueRef){ remove(myQueueRef); myQueueRef=null; }
-  conn = peer.connect(targetId,{ reliable:true });
-  conn.on('open', () => setupDataChannel());
-  mediaConn = peer.call(targetId, localStream);
-  mediaConn.on('stream', s => { $('video-opp').srcObject=s; onBothConnected(); });
+
+function joinWindowAsGuest(lobbyId, windowOffset){
+  if(peer){ peer.destroy(); peer=null; }
+  peer = new Peer();
+
+  peer.on('open', () => {
+    $('search-status').textContent = 'Connecting…';
+
+    conn = peer.connect(lobbyId, { reliable:true });
+    let connected = false;
+
+    conn.on('open', () => {
+      connected = true;
+      setupDataChannel();
+    });
+    conn.on('error', () => {
+      if(!connected) findStranger(windowOffset+1);
+    });
+
+    // Call with video after data channel opens
+    conn.on('open', () => {
+      mediaConn = peer.call(lobbyId, localStream);
+      mediaConn.on('stream', s => { $('video-opp').srcObject=s; onBothConnected(); });
+    });
+
+    // If no stream in 5s the host is already taken, try next window
+    setTimeout(() => {
+      if(!$('s-game').classList.contains('active')) findStranger(windowOffset+1);
+    }, 5000);
+  });
+
+  peer.on('error', () => findStranger(windowOffset+1));
 }
 
 /* ── Friend code ── */
@@ -872,7 +872,7 @@ function hostGame(){
       setTimeout(() => { $('btn-copy').textContent='Copy code'; }, 1800);
     });
   };
-  peer.destroy();
+  if(peer) peer.destroy();
   peer = new Peer('BLINKER-'+code);
   peer.on('open', () => {
     peer.on('connection', c => { conn=c; conn.on('open', () => setupDataChannel()); });
@@ -944,6 +944,7 @@ function skipToNext(){
   const ks=localStream, kd=detector;
   gameActive=false;
   if(rafId){ cancelAnimationFrame(rafId); rafId=null; }
+  if(searchTimeout){ clearTimeout(searchTimeout); searchTimeout=null; }
   if(mediaConn){ mediaConn.close(); mediaConn=null; }
   if(conn){ conn.close(); conn=null; }
   if(peer){ peer.destroy(); peer=null; }
@@ -952,7 +953,7 @@ function skipToNext(){
   myReady=theirReady=false; againReady={me:false,them:false};
   show('s-search');
   $('search-status').textContent='Finding next stranger…';
-  initPeer(() => findStranger());
+  findStranger();
 }
 $('btn-next').onclick        = skipToNext;
 $('btn-next-result').onclick = skipToNext;
@@ -1075,7 +1076,7 @@ function resetHUD(){
 function cleanup(){
   gameActive=false;
   if(rafId){ cancelAnimationFrame(rafId); rafId=null; }
-  if(myQueueRef){ remove(myQueueRef); myQueueRef=null; }
+  if(searchTimeout){ clearTimeout(searchTimeout); searchTimeout=null; }
   if(mediaConn){ mediaConn.close(); mediaConn=null; }
   if(conn){ conn.close(); conn=null; }
   if(peer){ peer.destroy(); peer=null; }
