@@ -678,6 +678,8 @@ html,body{
   </div>
 </div>
 
+<!-- Three.js WebGL -->
+<script src="https://cdn.jsdelivr.net/npm/three@0.158.0/build/three.min.js"></script>
 <!-- PeerJS -->
 <script src="https://cdn.jsdelivr.net/npm/peerjs@1.5.2/dist/peerjs.min.js"></script>
 <!-- MediaPipe WASM runtime (no loadGraphModel needed) -->
@@ -1098,195 +1100,133 @@ function cleanup(){
   myReady=theirReady=false; againReady={me:false,them:false};
 }
 
-/* ── Canvas Eye (photo + animated iris) ── */
+/* ── WebGL Eye — AI texture on 3D sphere with real lighting ── */
 (function(){
+  if(typeof THREE==='undefined') return;
   const canvas=document.getElementById('eye-canvas');
-  const ctx=canvas.getContext('2d');
+  const W=()=>window.innerWidth, H=()=>window.innerHeight;
 
-  const img=new Image();
-  img.src='/eye.webp';
+  const renderer=new THREE.WebGLRenderer({canvas,antialias:true,alpha:false});
+  renderer.setPixelRatio(Math.min(devicePixelRatio,2));
+  renderer.setClearColor(0x0a0a0a,1);
+  renderer.shadowMap.enabled=false;
+  renderer.toneMapping=THREE.ACESFilmicToneMapping;
+  renderer.toneMappingExposure=1.1;
 
-  /* normalized measurements of the iris within the 626×524 photo */
-  const IN_X=0.500, IN_Y=0.517; /* iris center as fraction of photo dims */
-  const IN_R=0.222;              /* iris radius as fraction of photo width */
-  const PU_R=0.088;              /* pupil radius as fraction of photo width */
+  const scene=new THREE.Scene();
+  const camera=new THREE.PerspectiveCamera(46,1,0.1,100);
+  camera.position.z=3;
 
-  let mx=0,my=0,smx=0,smy=0;   /* raw + smoothed cursor (-1..1) */
-  let blinkProg=0,t=0,opening=false;
+  /* ── Lighting — three-point setup ── */
+  scene.add(new THREE.AmbientLight(0x2a1e35,0.6));
 
-  setTimeout(()=>{opening=true;},300);
+  const key=new THREE.DirectionalLight(0xfff5e8,2.8);
+  key.position.set(-2.5,3.5,4);
+  scene.add(key);
+
+  const fill=new THREE.DirectionalLight(0xb8cce8,0.7);
+  fill.position.set(3,-1,3);
+  scene.add(fill);
+
+  const rim=new THREE.DirectionalLight(0xff4466,0.35);
+  rim.position.set(0,0,-3);
+  scene.add(rim);
+
+  /* ── Eyeball sphere with AI-generated texture ── */
+  const EYE_TEX='https://d8j0ntlcm91z4.cloudfront.net/user_3GjWeHvnZJsFxTmpMcYsBTEyrPI/hf_20261019_221650_e672c800-9cc8-4270-a67f-20c31787911f.png';
+  const tex=new THREE.TextureLoader().load(EYE_TEX);
+  tex.minFilter=THREE.LinearMipmapLinearFilter;
+  tex.generateMipmaps=true;
+  tex.anisotropy=renderer.capabilities.getMaxAnisotropy();
+
+  const eyeGeo=new THREE.SphereGeometry(1,128,128);
+  const eyeMat=new THREE.MeshPhongMaterial({
+    map:tex,
+    shininess:220,
+    specular:new THREE.Color(0x88bbcc),
+  });
+  const eye=new THREE.Mesh(eyeGeo,eyeMat);
+  scene.add(eye);
+
+  /* ── Cornea — thin transparent sphere for wet glassy look ── */
+  const corneaGeo=new THREE.SphereGeometry(1.025,64,64);
+  const corneaMat=new THREE.MeshPhongMaterial({
+    color:0xffffff,
+    transparent:true,
+    opacity:0.07,
+    shininess:900,
+    specular:new THREE.Color(0xffffff),
+  });
+  const cornea=new THREE.Mesh(corneaGeo,corneaMat);
+  scene.add(cornea);
+
+  /* ── Atmospheric glow ring behind eye ── */
+  const glowGeo=new THREE.RingGeometry(1.0,2.2,64);
+  const glowMat=new THREE.MeshBasicMaterial({
+    color:0x112233,
+    transparent:true,
+    opacity:0.55,
+    side:THREE.FrontSide,
+  });
+  const glowRing=new THREE.Mesh(glowGeo,glowMat);
+  glowRing.position.z=-0.5;
+  scene.add(glowRing);
+
+  let mx=0,my=0,rotX=0,rotY=0,blinkProg=0,t=0,opening=false,eyeBase=1;
+  setTimeout(()=>{opening=true;},350);
 
   function resize(){
-    canvas.width=window.innerWidth;
-    canvas.height=window.innerHeight;
+    renderer.setSize(W(),H());
+    camera.aspect=W()/H();
+    camera.updateProjectionMatrix();
+    /* size sphere to ~44% viewport height */
+    const vH=2*Math.tan((46*Math.PI/180)/2)*3;
+    eyeBase=(H()*0.44/H())*vH/2;
+    eye.scale.setScalar(eyeBase);
+    cornea.scale.setScalar(eyeBase*1.025);
+    glowRing.scale.setScalar(eyeBase);
   }
   window.addEventListener('resize',resize);
   resize();
 
   document.addEventListener('mousemove',e=>{
-    mx=(e.clientX/window.innerWidth -0.5)*2;
-    my=-(e.clientY/window.innerHeight-0.5)*2;
+    mx=(e.clientX/W()-0.5)*2;
+    my=-(e.clientY/H()-0.5)*2;
   });
   window.addEventListener('deviceorientation',e=>{
     if(e.gamma!=null) mx=(e.gamma/45)*0.8;
     if(e.beta !=null) my=-((e.beta-45)/45)*0.6;
   });
 
-  /* iris fiber cache */
-  const FIBERS=Array.from({length:64},(_,i)=>{
-    const a=(i/64)*Math.PI*2;
-    return{
-      a, curl:(Math.sin(i*2.7)*0.35),
-      len:0.52+Math.sin(i*3.1+1.4)*0.38,
-      w:0.55+Math.sin(i*4.1)*0.28,
-      alp:0.22+Math.sin(i*2.1)*0.10,
-      hue:185+Math.sin(i*3.3)*12,
-      sat:42+Math.sin(i*5.1)*14,
-      lit:22+Math.sin(i*6.7)*9
-    };
-  });
-
-  function drawIris(cx,cy,r,pupilShiftX,pupilShiftY,dist){
-    ctx.save();
-    ctx.beginPath();
-    ctx.arc(cx,cy,r,0,Math.PI*2);
-    ctx.clip();
-
-    /* iris base — blue-green matching photo */
-    const ig=ctx.createRadialGradient(cx,cy-r*0.05,r*0.04,cx,cy,r);
-    ig.addColorStop(0,'#6fa3b2');
-    ig.addColorStop(0.22,'#4f8a9a');
-    ig.addColorStop(0.52,'#3a6e7e');
-    ig.addColorStop(0.80,'#274f5c');
-    ig.addColorStop(1,'#162f38');
-    ctx.fillStyle=ig;
-    ctx.fillRect(cx-r,cy-r,r*2,r*2);
-
-    /* radial fibers */
-    ctx.globalCompositeOperation='screen';
-    for(const f of FIBERS){
-      ctx.globalAlpha=f.alp;
-      ctx.strokeStyle=`hsl(${f.hue},${f.sat}%,${f.lit}%)`;
-      ctx.lineWidth=f.w;
-      ctx.beginPath();
-      ctx.moveTo(cx+Math.cos(f.a)*r*0.11,cy+Math.sin(f.a)*r*0.11);
-      ctx.quadraticCurveTo(
-        cx+Math.cos(f.a+f.curl)*r*0.54,cy+Math.sin(f.a+f.curl)*r*0.54,
-        cx+Math.cos(f.a)*r*f.len,cy+Math.sin(f.a)*r*f.len
-      );
-      ctx.stroke();
-    }
-    ctx.globalCompositeOperation='source-over';
-    ctx.globalAlpha=1;
-
-    /* limbal ring */
-    const lr=ctx.createRadialGradient(cx,cy,r*0.76,cx,cy,r);
-    lr.addColorStop(0,'rgba(0,0,0,0)');
-    lr.addColorStop(0.55,'rgba(0,0,0,0.52)');
-    lr.addColorStop(1,'rgba(0,0,0,0.94)');
-    ctx.fillStyle=lr;
-    ctx.fillRect(cx-r,cy-r,r*2,r*2);
-
-    ctx.restore();
-
-    /* pupil — shifts toward cursor independently */
-    const px=cx+pupilShiftX, py=cy+pupilShiftY;
-    const pr=r*(PU_R/IN_R)*(0.82+dist*0.22);
-    const pg=ctx.createRadialGradient(px-pr*0.12,py-pr*0.12,0,px,py,pr);
-    pg.addColorStop(0,'#18100a');
-    pg.addColorStop(0.65,'#070301');
-    pg.addColorStop(1,'#000000');
-    ctx.fillStyle=pg;
-    ctx.beginPath();
-    ctx.arc(px,py,pr,0,Math.PI*2);
-    ctx.fill();
-
-    /* cornea specular highlight — follows cursor */
-    const sx=px-pr*0.52+smx*pr*0.18;
-    const sy=py-pr*0.52-smy*pr*0.14;
-    const sp=ctx.createRadialGradient(sx,sy,0,sx,sy,pr*0.58);
-    sp.addColorStop(0,'rgba(255,252,248,0.94)');
-    sp.addColorStop(0.38,'rgba(255,252,248,0.40)');
-    sp.addColorStop(1,'rgba(255,252,248,0)');
-    ctx.fillStyle=sp;
-    ctx.beginPath();
-    ctx.ellipse(sx,sy,pr*0.30,pr*0.21,-0.5,0,Math.PI*2);
-    ctx.fill();
-
-    /* tiny secondary catchlight */
-    ctx.fillStyle='rgba(255,252,248,0.48)';
-    ctx.beginPath();
-    ctx.arc(px+pr*0.44,py-pr*0.32,pr*0.09,0,Math.PI*2);
-    ctx.fill();
-  }
-
   function frame(){
     t+=0.016;
-    if(opening&&blinkProg<1) blinkProg=Math.min(1,blinkProg+0.018);
-    smx+=(mx-smx)*0.055;
-    smy+=(my-smy)*0.055;
+    if(opening&&blinkProg<1) blinkProg=Math.min(1,blinkProg+0.016);
 
-    const W=canvas.width, H=canvas.height;
-    ctx.fillStyle='#0a0a0a';
-    ctx.fillRect(0,0,W,H);
+    /* eye tracks cursor — sphere rotation moves iris on curved surface */
+    rotY+=(mx*0.42-rotY)*0.055;
+    rotX+=(my*0.28-rotX)*0.055;
+    eye.rotation.set(rotX,rotY,0);
+    cornea.rotation.set(rotX,rotY,0);
 
-    if(img.complete&&img.naturalWidth){
-      const imgA=img.naturalWidth/img.naturalHeight;
-      const screenA=W/H;
+    /* key light follows cursor for dynamic highlights */
+    key.position.set(-2.5+mx*1.2, 3.5+my*0.8, 4);
 
-      /* fit photo so it looks natural — max 62% screen height, centered */
-      const maxH=H*0.62;
-      const maxW=W*0.80;
-      let dh=maxH, dw=dh*imgA;
-      if(dw>maxW){ dw=maxW; dh=dw/imgA; }
+    /* breathing + blink-open */
+    const breath=(0.97+Math.sin(t*0.55)*0.03)*blinkProg;
+    eye.scale.setScalar(eyeBase*breath);
+    cornea.scale.setScalar(eyeBase*breath*1.025);
+    glowRing.scale.setScalar(eyeBase*(0.97+Math.sin(t*0.55)*0.03));
 
-      const dx=(W-dw)/2;
-      const dy=(H-dh)*0.44; /* sit slightly above center */
-
-      /* slight background parallax */
-      const bpx=smx*W*0.008;
-      const bpy=-smy*H*0.008;
-
-      ctx.drawImage(img,dx+bpx,dy+bpy,dw,dh);
-
-      /* iris position in screen space */
-      const irisCX=dx+bpx+IN_X*dw;
-      const irisCY=dy+bpy+IN_Y*dh;
-      const irisR=IN_R*dw;
-
-      /* pupil shift — clear, visible movement toward cursor */
-      const maxShift=irisR*0.28;
-      const pupilShiftX=smx*maxShift;
-      const pupilShiftY=-smy*maxShift;
-      const dist=Math.sqrt(smx*smx+smy*smy);
-
-      /* dark mask to erase the static photo iris */
-      const mask=ctx.createRadialGradient(irisCX,irisCY,irisR*0.55,irisCX,irisCY,irisR*1.04);
-      mask.addColorStop(0,'rgba(6,5,10,0.97)');
-      mask.addColorStop(0.72,'rgba(6,5,10,0.94)');
-      mask.addColorStop(1,'rgba(6,5,10,0)');
-      ctx.fillStyle=mask;
-      ctx.beginPath();
-      ctx.arc(irisCX,irisCY,irisR*1.04,0,Math.PI*2);
-      ctx.fill();
-
-      drawIris(irisCX,irisCY,irisR,pupilShiftX,pupilShiftY,dist);
-    }
-
-    /* eyelid clip-path — ellipse opens on load */
-    const base=Math.min(W,H);
-    const ew=(base*0.68/W*100).toFixed(1);
-    const eh=(base*0.26*blinkProg/H*100).toFixed(1);
+    /* eyelid clip-path */
+    const base=Math.min(W(),H());
+    const ew=(base*0.68/W()*100).toFixed(1);
+    const eh=(base*0.26*blinkProg/H()*100).toFixed(1);
     canvas.style.clipPath=`ellipse(${ew}% ${eh}% at 50% 46%)`;
 
-    /* CSS 3D perspective tilt */
-    const tX=(smy*7).toFixed(2);
-    const tY=(smx*11).toFixed(2);
-    canvas.style.transform=`perspective(1100px) rotateX(${tX}deg) rotateY(${tY}deg)`;
-
+    renderer.render(scene,camera);
     requestAnimationFrame(frame);
   }
-  requestAnimationFrame(frame);
+  frame();
 })();
 </script>
 </body>
