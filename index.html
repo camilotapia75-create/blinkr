@@ -121,12 +121,23 @@ html,body{
   width:100%;height:100%;
   display:block;
   pointer-events:none;
+  z-index:0;
+}
+
+#s-land::after{
+  content:'';position:absolute;inset:0;pointer-events:none;z-index:1;
+  background:
+    linear-gradient(to top,  rgba(10,10,10,0.96) 28%,rgba(10,10,10,0.52) 48%,transparent 62%),
+    linear-gradient(to bottom,rgba(10,10,10,0.72) 0%,transparent 12%),
+    linear-gradient(to right, rgba(10,10,10,0.68) 0%,transparent 18%),
+    linear-gradient(to left,  rgba(10,10,10,0.68) 0%,transparent 18%);
 }
 
 .land-ui{
   position:fixed;inset:0;
   display:flex;flex-direction:column;
   pointer-events:none;
+  z-index:2;
 }
 
 .land-nav{
@@ -667,6 +678,8 @@ html,body{
   </div>
 </div>
 
+<!-- Three.js WebGL -->
+<script src="https://cdn.jsdelivr.net/npm/three@0.158.0/build/three.min.js"></script>
 <!-- PeerJS -->
 <script src="https://cdn.jsdelivr.net/npm/peerjs@1.5.2/dist/peerjs.min.js"></script>
 <!-- MediaPipe WASM runtime (no loadGraphModel needed) -->
@@ -1087,214 +1100,176 @@ function cleanup(){
   myReady=theirReady=false; againReady={me:false,them:false};
 }
 
-/* ── Canvas Eye ── */
+/* ── WebGL Eye ── */
 (function(){
+  if(typeof THREE === 'undefined') return;
   const canvas = document.getElementById('eye-canvas');
-  const ctx    = canvas.getContext('2d');
-  let mx, my, irisX=0, irisY=0, blinkProg=0, t=0;
+  const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: false });
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+  renderer.setClearColor(0x0a0a0a, 1);
 
-  /* Pre-generate fiber params once — avoids random flicker each frame */
-  const NFIBERS = 400;
-  const fibers  = Array.from({length:NFIBERS}, ()=>({
-    a:    Math.random()*Math.PI*2,
-    len:  0.48 + Math.random()*0.44,
-    w:    0.4  + Math.random()*0.9,
-    hue:  20   + Math.random()*35,
-    sat:  45   + Math.random()*35,
-    lit:  18   + Math.random()*24,
-    alp:  0.35 + Math.random()*0.55,
-    curl: (Math.random()-0.5)*0.22
-  }));
+  const scene  = new THREE.Scene();
+  const camera = new THREE.PerspectiveCamera(35, 1, 0.1, 100);
+  camera.position.z = 3.2;
+
+  const vert = `
+    varying vec3 vPos;
+    varying vec3 vNorm;
+    varying vec3 vView;
+    void main(){
+      vPos  = position;
+      vNorm = normalize(normalMatrix * normal);
+      vView = (modelViewMatrix * vec4(position,1.0)).xyz;
+      gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.0);
+    }
+  `;
+
+  const frag = `
+    precision highp float;
+    varying vec3 vPos;
+    varying vec3 vNorm;
+    varying vec3 vView;
+    uniform float time;
+    uniform float pupil;
+
+    float h1(float n){ return fract(sin(n)*43758.5453); }
+    float h2(float a,float b){ return h1(a*17.3+b*5.7+2.1); }
+
+    void main(){
+      const float TAU=6.28318530;
+      vec2  p=vPos.xy;
+      float r=length(p);
+      float ang=atan(p.y,p.x);
+
+      float IR=0.43;
+      float PR=0.155*(0.55+pupil*0.9);
+
+      vec3 col=vec3(0.0);
+
+      if(r<IR){
+        float nr=r/IR;
+
+        /* iris base gradient */
+        vec3 c1=vec3(0.70,0.50,0.08),c2=vec3(0.46,0.32,0.06),
+             c3=vec3(0.24,0.15,0.03),c4=vec3(0.11,0.06,0.01);
+        col=mix(c1,c2,smoothstep(0.0,0.38,nr));
+        col=mix(col,c3,smoothstep(0.33,0.72,nr));
+        col=mix(col,c4,smoothstep(0.70,0.95,nr));
+
+        /* 48 primary radial fibers */
+        float n48=ang/TAU*48.0,i48=floor(n48),f48=fract(n48);
+        float w48=0.22+h1(i48*0.17+3.7)*0.32;
+        float b48=0.40+h1(i48*0.61)*0.50;
+        float l48=0.18+h1(i48*0.31)*0.72;
+        float fib48=smoothstep(w48,w48-0.14,abs(f48-0.5)*2.0)
+                   *smoothstep(0.0,0.16,nr)*(1.0-smoothstep(l48,l48+0.1,nr))*b48;
+
+        /* 80 secondary fibers */
+        float n80=ang/TAU*80.0,i80=floor(n80),f80=fract(n80);
+        float w80=0.28+h1(i80*0.23+7.1)*0.24;
+        float b80=0.18+h1(i80*0.43)*0.28;
+        float fib80=smoothstep(w80,w80-0.16,abs(f80-0.5)*2.0)
+                   *smoothstep(0.07,0.2,nr)*(1.0-smoothstep(0.52,0.64,nr))*b80;
+
+        col=mix(col,vec3(0.88,0.66,0.13),clamp(fib48+fib80,0.0,1.0)*0.62);
+
+        /* 10 iris crypts */
+        float crypt=0.0;
+        for(int i=0;i<10;i++){
+          float fi=float(i);
+          float cA=h2(fi,0.1)*TAU,cR=0.1+h2(fi,0.2)*0.24,cS=0.017+h2(fi,0.3)*0.025;
+          crypt+=(1.0-smoothstep(0.0,cS,length(p-vec2(cos(cA)*cR,sin(cA)*cR))))*0.7;
+        }
+        col*=(1.0-clamp(crypt,0.0,0.55));
+
+        /* limbal ring */
+        col=mix(col,vec3(0.025,0.015,0.003),smoothstep(IR-0.048,IR,r)*0.97);
+
+        /* pupil */
+        float pe=1.0-smoothstep(PR-0.011,PR+0.009,r);
+        col=mix(col,vec3(0.008,0.004,0.001),pe);
+        col+=vec3(0.035,0.018,0.008)*(1.0-smoothstep(0.0,PR*0.4,r))*pe;
+
+      } else {
+        float nr=clamp((r-IR)/(1.0-IR),0.0,1.0);
+        vec3 sc=vec3(0.94,0.89,0.80);
+        col=mix(sc,sc*vec3(1.0,0.84,0.76),smoothstep(0.0,0.7,nr)*0.36);
+
+        /* blood vessels */
+        float vA=ang*3.0+r*7.0-0.3,vB=ang*2.5+r*5.5+1.1;
+        float vm=(1.0-smoothstep(0.0,0.006,abs(sin(vA)*r*0.14)))*0.18
+                +(1.0-smoothstep(0.0,0.005,abs(sin(vB)*r*0.11)))*0.12;
+        col=mix(col,vec3(0.82,0.36,0.38),vm*smoothstep(IR+0.03,IR+0.1,r)*0.3);
+        col*=(1.0-smoothstep(0.8,1.0,nr)*0.6);
+      }
+
+      /* 3-D lighting */
+      vec3 N=normalize(vNorm),V=normalize(-vView);
+      vec3 L1=normalize(vec3(-0.7,1.2,2.0));
+      vec3 L2=normalize(vec3(1.0,0.3,1.5));
+      col*=max(dot(N,L1),0.0)*0.55+max(dot(N,L2),0.0)*0.22+0.38;
+
+      /* cornea specular */
+      float sp=pow(max(dot(N,normalize(L1+V)),0.0),75.0)*0.95*smoothstep(0.55,0.0,r)
+              +pow(max(dot(N,normalize(L2+V)),0.0),130.0)*0.45*smoothstep(0.44,0.0,r);
+      col+=vec3(1.0,0.97,0.94)*sp;
+
+      gl_FragColor=vec4(col,1.0);
+    }
+  `;
+
+  const mat = new THREE.ShaderMaterial({
+    uniforms: { time:{value:0.0}, pupil:{value:0.5} },
+    vertexShader: vert, fragmentShader: frag
+  });
+  const eye = new THREE.Mesh(new THREE.SphereGeometry(1,96,96), mat);
+  scene.add(eye);
+
+  let mx=0,my=0,rotX=0,rotY=0,blinkProg=0,t=0,opening=false;
+  setTimeout(()=>{opening=true;},350);
 
   function resize(){
-    canvas.width  = window.innerWidth;
-    canvas.height = window.innerHeight;
-    mx = canvas.width/2;
-    my = canvas.height/2;
+    const W=window.innerWidth,H=window.innerHeight;
+    renderer.setSize(W,H);
+    camera.aspect=W/H;
+    camera.updateProjectionMatrix();
   }
-  window.addEventListener('resize', resize);
+  window.addEventListener('resize',resize);
   resize();
 
-  document.addEventListener('mousemove', e=>{ mx=e.clientX; my=e.clientY; });
-  window.addEventListener('deviceorientation', e=>{
-    if(e.gamma!=null) mx = innerWidth/2  + (e.gamma/45)*innerWidth*0.35;
-    if(e.beta !=null) my = innerHeight/2 + ((e.beta-45)/45)*innerHeight*0.25;
+  document.addEventListener('mousemove',e=>{
+    mx=(e.clientX/window.innerWidth-0.5)*2;
+    my=-(e.clientY/window.innerHeight-0.5)*2;
+  });
+  window.addEventListener('deviceorientation',e=>{
+    if(e.gamma!=null) mx=(e.gamma/45)*0.7;
+    if(e.beta !=null) my=-((e.beta-45)/45)*0.5;
   });
 
-  let opening=false;
-  setTimeout(()=>{ opening=true; }, 350);
-
   function frame(){
-    t += 0.016;
-    const W=canvas.width, H=canvas.height;
+    t+=0.016;
+    if(opening&&blinkProg<1) blinkProg=Math.min(1,blinkProg+0.014);
+    mat.uniforms.time.value=t;
 
-    if(opening && blinkProg<1) blinkProg=Math.min(1, blinkProg+0.014);
+    /* pupil dilation */
+    const dist=Math.sqrt(mx*mx+my*my);
+    mat.uniforms.pupil.value+=(0.65-dist*0.32-mat.uniforms.pupil.value)*0.05;
 
-    const base  = Math.min(W,H);
-    const EW    = base*0.68;
-    const EHmax = base*0.26;
-    const breath= 0.97 + Math.sin(t*0.55)*0.03;
-    const EH    = EHmax * blinkProg * breath;
+    /* eye rotation follows cursor */
+    rotY+=(mx*0.22-rotY)*0.07;
+    rotX+=(my*0.14-rotX)*0.07;
+    eye.rotation.set(rotX,rotY,0);
 
-    const eyeOffX = W > 780 ? -W*0.12 : 0;
-    const cx = W*0.5 + eyeOffX;
-    const cy = H*0.46;
+    /* breathing + blink-open */
+    eye.scale.setScalar((0.97+Math.sin(t*0.55)*0.03)*blinkProg);
 
-    /* Iris tracking */
-    const dx   = mx-cx, dy=my-cy;
-    const dist = Math.sqrt(dx*dx+dy*dy);
-    const norm = Math.min(dist/(Math.max(W,H)*0.42), 1);
-    const ang  = Math.atan2(dy, dx);
-    const maxS = EW*0.11;
-    irisX += (Math.cos(ang)*norm*maxS - irisX)*0.07;
-    irisY += (Math.sin(ang)*norm*maxS*0.5 - irisY)*0.07;
+    /* eyelid clip-path — ellipse that opens as blinkProg goes 0→1 */
+    const base=Math.min(window.innerWidth,window.innerHeight);
+    const ew=(base*0.68/window.innerWidth*100).toFixed(1);
+    const eh=(base*0.26*blinkProg/window.innerHeight*100).toFixed(1);
+    canvas.style.clipPath=`ellipse(${ew}% ${eh}% at 50% 46%)`;
 
-    const IX = cx+irisX;
-    const IY = cy+irisY*blinkProg;
-    const irisR = Math.min(EH*0.9, EW*0.42);
-    const pScale = 0.94 - norm*0.28;
-
-    ctx.clearRect(0,0,W,H);
-    ctx.fillStyle='#0a0a0a';
-    ctx.fillRect(0,0,W,H);
-
-    if(blinkProg>0.2){
-      const ag=ctx.createRadialGradient(IX,IY,0,IX,IY,EW*0.65);
-      ag.addColorStop(0, `rgba(130,95,20,${0.07*blinkProg})`);
-      ag.addColorStop(1,'rgba(0,0,0,0)');
-      ctx.fillStyle=ag; ctx.fillRect(0,0,W,H);
-    }
-
-    if(EH<2){ requestAnimationFrame(frame); return; }
-
-    const ePath=()=>{
-      ctx.beginPath();
-      ctx.moveTo(cx-EW,cy);
-      ctx.bezierCurveTo(cx-EW*0.58,cy-EH*1.18, cx+EW*0.58,cy-EH*1.18, cx+EW,cy);
-      ctx.bezierCurveTo(cx+EW*0.58,cy+EH*0.76, cx-EW*0.58,cy+EH*0.76, cx-EW,cy);
-      ctx.closePath();
-    };
-
-    ctx.save(); ePath(); ctx.clip();
-
-    /* Sclera */
-    const sg=ctx.createRadialGradient(cx,cy-EH*0.1,EH*0.04,cx,cy,EW*0.88);
-    sg.addColorStop(0,'#f4ead8'); sg.addColorStop(0.5,'#ede2cc');
-    sg.addColorStop(0.85,'#d9cebc'); sg.addColorStop(1,'#c9bea8');
-    ctx.fillStyle=sg; ctx.fillRect(cx-EW,cy-EH*2.5,EW*2,EH*5);
-
-    /* Sclera veins */
-    ctx.save();
-    ctx.strokeStyle=`rgba(210,90,90,${0.15+Math.sin(t*0.4)*0.02})`;
-    ctx.lineWidth=0.85;
-    [[cx-EW*0.55,cy-EH*0.09,cx-EW*0.35,cy-EH*0.18,cx-EW*0.14,cy-EH*0.06],
-     [cx-EW*0.52,cy+EH*0.1, cx-EW*0.30,cy+EH*0.15,cx-EW*0.10,cy+EH*0.05],
-     [cx+EW*0.50,cy-EH*0.06,cx+EW*0.30,cy-EH*0.13,cx+EW*0.11,cy-EH*0.04]
-    ].forEach(([x1,y1,cpx,cpy,x2,y2])=>{
-      ctx.beginPath(); ctx.moveTo(x1,y1);
-      ctx.quadraticCurveTo(cpx,cpy,x2,y2); ctx.stroke();
-    });
-    ctx.restore();
-
-    if(irisR>2){
-      /* Iris depth shadow */
-      const id=ctx.createRadialGradient(IX,IY,irisR*0.7,IX,IY,irisR*1.06);
-      id.addColorStop(0,'rgba(0,0,0,0)'); id.addColorStop(1,'rgba(0,0,0,0.42)');
-      ctx.fillStyle=id; ctx.beginPath(); ctx.arc(IX,IY,irisR*1.06,0,Math.PI*2); ctx.fill();
-
-      /* Iris base — warm amber */
-      const ig=ctx.createRadialGradient(IX,IY-irisR*0.06,irisR*0.07,IX,IY,irisR);
-      ig.addColorStop(0,'#a07c22'); ig.addColorStop(0.22,'#7d5c10');
-      ig.addColorStop(0.52,'#52390b'); ig.addColorStop(0.80,'#301e05');
-      ig.addColorStop(1,'#1b0f02');
-      ctx.fillStyle=ig; ctx.beginPath(); ctx.arc(IX,IY,irisR,0,Math.PI*2); ctx.fill();
-
-      /* Fiber texture */
-      ctx.save();
-      ctx.beginPath(); ctx.arc(IX,IY,irisR*0.97,0,Math.PI*2); ctx.clip();
-      ctx.globalCompositeOperation='screen';
-      for(const f of fibers){
-        const sr=irisR*0.10, er=irisR*f.len*0.95, cpr=er*0.52;
-        ctx.globalAlpha=f.alp*0.58;
-        ctx.strokeStyle=`hsl(${f.hue},${f.sat}%,${f.lit}%)`;
-        ctx.lineWidth=f.w;
-        ctx.beginPath();
-        ctx.moveTo(IX+Math.cos(f.a)*sr, IY+Math.sin(f.a)*sr);
-        ctx.quadraticCurveTo(
-          IX+Math.cos(f.a+f.curl)*cpr, IY+Math.sin(f.a+f.curl)*cpr,
-          IX+Math.cos(f.a)*er,         IY+Math.sin(f.a)*er
-        );
-        ctx.stroke();
-      }
-      ctx.restore();
-
-      /* Limbal ring */
-      const lr=ctx.createRadialGradient(IX,IY,irisR*0.76,IX,IY,irisR);
-      lr.addColorStop(0,'rgba(0,0,0,0)'); lr.addColorStop(0.5,'rgba(0,0,0,0.4)');
-      lr.addColorStop(1,'rgba(0,0,0,0.9)');
-      ctx.fillStyle=lr; ctx.beginPath(); ctx.arc(IX,IY,irisR,0,Math.PI*2); ctx.fill();
-
-      /* Pupil */
-      const pr=irisR*0.36*pScale;
-      const pg=ctx.createRadialGradient(IX,IY-pr*0.08,0,IX,IY,pr);
-      pg.addColorStop(0,'#1a1008'); pg.addColorStop(0.65,'#070401');
-      pg.addColorStop(1,'#000000');
-      ctx.fillStyle=pg; ctx.beginPath(); ctx.arc(IX,IY,pr,0,Math.PI*2); ctx.fill();
-
-      /* Specular highlights */
-      ctx.save();
-      ctx.beginPath(); ctx.arc(IX,IY,irisR,0,Math.PI*2); ctx.clip();
-      ctx.globalAlpha=0.9;
-      const h1=ctx.createRadialGradient(IX-irisR*0.28,IY-irisR*0.30,0,IX-irisR*0.28,IY-irisR*0.30,irisR*0.19);
-      h1.addColorStop(0,'rgba(255,255,255,0.96)');
-      h1.addColorStop(0.4,'rgba(255,255,255,0.48)');
-      h1.addColorStop(1,'rgba(255,255,255,0)');
-      ctx.fillStyle=h1;
-      ctx.beginPath();
-      ctx.ellipse(IX-irisR*0.28,IY-irisR*0.30,irisR*0.12,irisR*0.08,-0.4,0,Math.PI*2);
-      ctx.fill();
-      ctx.globalAlpha=0.5;
-      const h2=ctx.createRadialGradient(IX+irisR*0.30,IY-irisR*0.17,0,IX+irisR*0.30,IY-irisR*0.17,irisR*0.07);
-      h2.addColorStop(0,'rgba(255,255,255,0.88)'); h2.addColorStop(1,'rgba(255,255,255,0)');
-      ctx.fillStyle=h2;
-      ctx.beginPath(); ctx.arc(IX+irisR*0.30,IY-irisR*0.17,irisR*0.05,0,Math.PI*2); ctx.fill();
-      ctx.restore();
-    }
-
-    /* Eyelid shadows */
-    const us=ctx.createLinearGradient(cx,cy-EH*1.18,cx,cy-EH*0.28);
-    us.addColorStop(0,'rgba(0,0,0,0.76)'); us.addColorStop(1,'rgba(0,0,0,0)');
-    ctx.fillStyle=us; ctx.fillRect(cx-EW,cy-EH*2.5,EW*2,EH*2.5);
-
-    const ls=ctx.createLinearGradient(cx,cy+EH*0.76,cx,cy+EH*0.18);
-    ls.addColorStop(0,'rgba(0,0,0,0.62)'); ls.addColorStop(1,'rgba(0,0,0,0)');
-    ctx.fillStyle=ls; ctx.fillRect(cx-EW,cy,EW*2,EH);
-
-    ctx.restore(); /* end clip */
-
-    /* Eyelid edge line */
-    ctx.save();
-    ctx.strokeStyle='rgba(255,255,255,0.06)'; ctx.lineWidth=1.5;
-    ePath(); ctx.stroke();
-    ctx.restore();
-
-    /* Legibility vignettes */
-    const lv=ctx.createLinearGradient(0,0,W*0.18,0);
-    lv.addColorStop(0,'rgba(10,10,10,0.92)'); lv.addColorStop(1,'rgba(10,10,10,0)');
-    ctx.fillStyle=lv; ctx.fillRect(0,0,W*0.18,H);
-
-    const rv=ctx.createLinearGradient(W,0,W*0.82,0);
-    rv.addColorStop(0,'rgba(10,10,10,0.92)'); rv.addColorStop(1,'rgba(10,10,10,0)');
-    ctx.fillStyle=rv; ctx.fillRect(W*0.82,0,W*0.18,H);
-
-    const bv=ctx.createLinearGradient(0,H,0,H*0.58);
-    bv.addColorStop(0,'rgba(10,10,10,0.94)'); bv.addColorStop(1,'rgba(10,10,10,0)');
-    ctx.fillStyle=bv; ctx.fillRect(0,H*0.58,W,H*0.42);
-
-    const tv=ctx.createLinearGradient(0,0,0,H*0.13);
-    tv.addColorStop(0,'rgba(10,10,10,0.72)'); tv.addColorStop(1,'rgba(10,10,10,0)');
-    ctx.fillStyle=tv; ctx.fillRect(0,0,W,H*0.13);
-
+    renderer.render(scene,camera);
     requestAnimationFrame(frame);
   }
   frame();
