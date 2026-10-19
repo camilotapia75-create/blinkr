@@ -1106,12 +1106,9 @@ function cleanup(){
   const ctx=canvas.getContext('2d');
   const W=()=>window.innerWidth, H=()=>window.innerHeight;
 
-  /* photo natural dimensions */
-  const PW=626, PH=524;
-  /* iris center in photo pixels (measured from top-left of image) */
-  const PIX=313, PIY=268;
-  /* iris radius in photo pixels */
-  const PIR=108;
+  const PW=626, PH=524;   /* photo natural size */
+  const PIX=313, PIY=268; /* iris center in photo pixels */
+  const PIR=108;           /* iris radius in photo pixels */
 
   const img=new Image();
   img.crossOrigin='anonymous';
@@ -1140,43 +1137,46 @@ function cleanup(){
     const cw=W(), ch=H();
     if(!img.complete||!img.naturalWidth){requestAnimationFrame(frame);return;}
 
-    /* cover-fit: scale photo to fill canvas */
+    /* contain-fit: photo fits fully inside canvas, black bars if needed */
     const pr=PW/PH, sr=cw/ch;
     let dw,dh,dx,dy;
-    if(sr>pr){ dw=cw; dh=cw/pr; dx=0; dy=(ch-dh)/2; }
-    else     { dh=ch; dw=ch*pr; dx=(cw-dw)/2; dy=0; }
+    if(sr>pr){ dh=ch; dw=ch*pr; dx=(cw-dw)/2; dy=0; }
+    else     { dw=cw; dh=cw/pr; dx=0;          dy=(ch-dh)/2; }
 
     const sf=dw/PW;
-    const sIX=dx+PIX*sf;   /* iris center X on screen */
-    const sIY=dy+PIY*sf;   /* iris center Y on screen */
-    const sIR=PIR*sf;      /* iris radius on screen */
+    const sIX=dx+PIX*sf;
+    const sIY=dy+PIY*sf;
+    const sIR=PIR*sf;
 
-    /* iris travel: up to 35% of its radius */
     const offX= gx*sIR*0.35;
     const offY=-gy*sIR*0.30;
 
     ctx.clearRect(0,0,cw,ch);
 
-    /* 1 — draw entire photo (background: eyelids, skin, sclera) */
+    /* 1 — draw full photo */
     ctx.drawImage(img,dx,dy,dw,dh);
 
-    /* 2 — paint sclera-colored gradient over original iris position */
-    const sg=ctx.createRadialGradient(sIX,sIY,sIR*0.55, sIX,sIY,sIR*1.1);
+    /* 2 — erase original iris with sclera gradient */
+    const sg=ctx.createRadialGradient(sIX,sIY,sIR*0.55, sIX,sIY,sIR*1.18);
     sg.addColorStop(0,  'rgba(237,225,212,1)');
-    sg.addColorStop(0.88,'rgba(237,225,212,1)');
+    sg.addColorStop(0.85,'rgba(237,225,212,1)');
     sg.addColorStop(1,  'rgba(237,225,212,0)');
     ctx.fillStyle=sg;
-    ctx.beginPath(); ctx.arc(sIX,sIY,sIR*1.15,0,Math.PI*2); ctx.fill();
+    ctx.beginPath(); ctx.arc(sIX,sIY,sIR*1.18,0,Math.PI*2); ctx.fill();
 
-    /* 3 — redraw iris at offset: clip to circle, translate photo so iris
-           in the source aligns with the new clip center */
+    /* 3 — draw iris at cursor-offset position */
     ctx.save();
-    ctx.beginPath(); ctx.arc(sIX+offX,sIY+offY,sIR,0,Math.PI*2); ctx.clip();
+    ctx.beginPath(); ctx.arc(sIX+offX,sIY+offY,sIR*1.18,0,Math.PI*2); ctx.clip();
     ctx.translate(offX,offY);
     ctx.drawImage(img,dx,dy,dw,dh);
     ctx.restore();
 
-    canvas.style.clipPath=`ellipse(52% ${(20*openProg).toFixed(1)}% at 50% 47%)`;
+    /* eyelid clip: size proportional to actual iris on screen */
+    const ewPct=(sIR*2.5/cw*100).toFixed(1);
+    const ehPct=(sIR*1.2*openProg/ch*100).toFixed(1);
+    const exPct=(sIX/cw*100).toFixed(1);
+    const eyPct=(sIY/ch*100).toFixed(1);
+    canvas.style.clipPath=`ellipse(${ewPct}% ${ehPct}% at ${exPct}% ${eyPct}%)`;
     requestAnimationFrame(frame);
   }
 
