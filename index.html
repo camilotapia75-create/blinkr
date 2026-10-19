@@ -1100,142 +1100,61 @@ function cleanup(){
   myReady=theirReady=false; againReady={me:false,them:false};
 }
 
-/* ── WebGL Eye ── */
+/* ── WebGL Eye (photo) ── */
 (function(){
-  if(typeof THREE === 'undefined') return;
-  const canvas = document.getElementById('eye-canvas');
-  const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: false });
-  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-  renderer.setClearColor(0x0a0a0a, 1);
+  if(typeof THREE==='undefined') return;
+  const canvas=document.getElementById('eye-canvas');
+  const renderer=new THREE.WebGLRenderer({canvas,antialias:true,alpha:false});
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio,2));
+  renderer.setClearColor(0x0a0a0a,1);
 
-  const scene  = new THREE.Scene();
-  const camera = new THREE.PerspectiveCamera(35, 1, 0.1, 100);
-  camera.position.z = 3.2;
+  const scene=new THREE.Scene();
+  const camera=new THREE.PerspectiveCamera(35,1,0.1,100);
+  camera.position.z=3.2;
 
-  const vert = `
-    varying vec3 vPos;
-    varying vec3 vNorm;
-    varying vec3 vView;
-    void main(){
-      vPos  = position;
-      vNorm = normalize(normalMatrix * normal);
-      vView = (modelViewMatrix * vec4(position,1.0)).xyz;
-      gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.0);
-    }
-  `;
+  /* load the real eye photo */
+  const tex=new THREE.TextureLoader().load('/eye.webp');
+  tex.minFilter=THREE.LinearFilter;
+  tex.magFilter=THREE.LinearFilter;
 
-  const frag = `
-    precision highp float;
-    varying vec3 vPos;
-    varying vec3 vNorm;
-    varying vec3 vView;
-    uniform float time;
-    uniform float pupil;
+  const geo=new THREE.PlaneGeometry(1,1,1,1);
+  const mat=new THREE.MeshBasicMaterial({map:tex});
+  const plane=new THREE.Mesh(geo,mat);
+  scene.add(plane);
 
-    float h1(float n){ return fract(sin(n)*43758.5453); }
-    float h2(float a,float b){ return h1(a*17.3+b*5.7+2.1); }
-
-    void main(){
-      const float TAU=6.28318530;
-      vec2  p=vPos.xy;
-      float r=length(p);
-      float ang=atan(p.y,p.x);
-
-      float IR=0.43;
-      float PR=0.155*(0.55+pupil*0.9);
-
-      vec3 col=vec3(0.0);
-
-      if(r<IR){
-        float nr=r/IR;
-
-        /* iris base gradient */
-        vec3 c1=vec3(0.70,0.50,0.08),c2=vec3(0.46,0.32,0.06),
-             c3=vec3(0.24,0.15,0.03),c4=vec3(0.11,0.06,0.01);
-        col=mix(c1,c2,smoothstep(0.0,0.38,nr));
-        col=mix(col,c3,smoothstep(0.33,0.72,nr));
-        col=mix(col,c4,smoothstep(0.70,0.95,nr));
-
-        /* 48 primary radial fibers */
-        float n48=ang/TAU*48.0,i48=floor(n48),f48=fract(n48);
-        float w48=0.22+h1(i48*0.17+3.7)*0.32;
-        float b48=0.40+h1(i48*0.61)*0.50;
-        float l48=0.18+h1(i48*0.31)*0.72;
-        float fib48=smoothstep(w48,w48-0.14,abs(f48-0.5)*2.0)
-                   *smoothstep(0.0,0.16,nr)*(1.0-smoothstep(l48,l48+0.1,nr))*b48;
-
-        /* 80 secondary fibers */
-        float n80=ang/TAU*80.0,i80=floor(n80),f80=fract(n80);
-        float w80=0.28+h1(i80*0.23+7.1)*0.24;
-        float b80=0.18+h1(i80*0.43)*0.28;
-        float fib80=smoothstep(w80,w80-0.16,abs(f80-0.5)*2.0)
-                   *smoothstep(0.07,0.2,nr)*(1.0-smoothstep(0.52,0.64,nr))*b80;
-
-        col=mix(col,vec3(0.88,0.66,0.13),clamp(fib48+fib80,0.0,1.0)*0.62);
-
-        /* 10 iris crypts */
-        float crypt=0.0;
-        for(int i=0;i<10;i++){
-          float fi=float(i);
-          float cA=h2(fi,0.1)*TAU,cR=0.1+h2(fi,0.2)*0.24,cS=0.017+h2(fi,0.3)*0.025;
-          crypt+=(1.0-smoothstep(0.0,cS,length(p-vec2(cos(cA)*cR,sin(cA)*cR))))*0.7;
-        }
-        col*=(1.0-clamp(crypt,0.0,0.55));
-
-        /* limbal ring */
-        col=mix(col,vec3(0.025,0.015,0.003),smoothstep(IR-0.048,IR,r)*0.97);
-
-        /* pupil */
-        float pe=1.0-smoothstep(PR-0.011,PR+0.009,r);
-        col=mix(col,vec3(0.008,0.004,0.001),pe);
-        col+=vec3(0.035,0.018,0.008)*(1.0-smoothstep(0.0,PR*0.4,r))*pe;
-
-      } else {
-        float nr=clamp((r-IR)/(1.0-IR),0.0,1.0);
-        vec3 sc=vec3(0.94,0.89,0.80);
-        col=mix(sc,sc*vec3(1.0,0.84,0.76),smoothstep(0.0,0.7,nr)*0.36);
-
-        /* blood vessels */
-        float vA=ang*3.0+r*7.0-0.3,vB=ang*2.5+r*5.5+1.1;
-        float vm=(1.0-smoothstep(0.0,0.006,abs(sin(vA)*r*0.14)))*0.18
-                +(1.0-smoothstep(0.0,0.005,abs(sin(vB)*r*0.11)))*0.12;
-        col=mix(col,vec3(0.82,0.36,0.38),vm*smoothstep(IR+0.03,IR+0.1,r)*0.3);
-        col*=(1.0-smoothstep(0.8,1.0,nr)*0.6);
-      }
-
-      /* 3-D lighting */
-      vec3 N=normalize(vNorm),V=normalize(-vView);
-      vec3 L1=normalize(vec3(-0.7,1.2,2.0));
-      vec3 L2=normalize(vec3(1.0,0.3,1.5));
-      col*=max(dot(N,L1),0.0)*0.55+max(dot(N,L2),0.0)*0.22+0.38;
-
-      /* cornea specular */
-      float sp=pow(max(dot(N,normalize(L1+V)),0.0),75.0)*0.95*smoothstep(0.55,0.0,r)
-              +pow(max(dot(N,normalize(L2+V)),0.0),130.0)*0.45*smoothstep(0.44,0.0,r);
-      col+=vec3(1.0,0.97,0.94)*sp;
-
-      gl_FragColor=vec4(col,1.0);
-    }
-  `;
-
-  const mat = new THREE.ShaderMaterial({
-    uniforms: { time:{value:0.0}, pupil:{value:0.5} },
-    vertexShader: vert, fragmentShader: frag
+  /* subtle specular-glint overlay: small bright sphere segment */
+  const glintGeo=new THREE.PlaneGeometry(1,1,1,1);
+  const glintMat=new THREE.MeshBasicMaterial({
+    transparent:true,opacity:0,
+    color:0xffffff
   });
-  const eye = new THREE.Mesh(new THREE.SphereGeometry(1,96,96), mat);
-  scene.add(eye);
+  const glint=new THREE.Mesh(glintGeo,glintMat);
+  glint.position.z=0.01;
+  scene.add(glint);
 
   let mx=0,my=0,rotX=0,rotY=0,blinkProg=0,t=0,opening=false;
+  let bsW=1,bsH=1; /* base scale cached from resize */
+
   setTimeout(()=>{opening=true;},350);
 
-  function resize(){
+  /* scale plane to cover viewport at all aspect ratios */
+  function updateSize(){
     const W=window.innerWidth,H=window.innerHeight;
     renderer.setSize(W,H);
     camera.aspect=W/H;
     camera.updateProjectionMatrix();
+    const vFov=(35*Math.PI/180);
+    const vH=2*Math.tan(vFov/2)*3.2;
+    const vW=vH*(W/H);
+    const imgA=626/524; /* eye photo aspect ratio */
+    if(vW/vH>imgA){ bsW=vW*1.22; bsH=bsW/imgA; }
+    else           { bsH=vH*1.22; bsW=bsH*imgA; }
+    plane.scale.set(bsW,bsH,1);
+    glint.scale.set(bsW*0.28,bsH*0.22,1);
+    glint.position.set(-bsW*0.10,-bsH*0.09,0.01);
   }
-  window.addEventListener('resize',resize);
-  resize();
+  window.addEventListener('resize',updateSize);
+  updateSize();
 
   document.addEventListener('mousemove',e=>{
     mx=(e.clientX/window.innerWidth-0.5)*2;
@@ -1249,24 +1168,29 @@ function cleanup(){
   function frame(){
     t+=0.016;
     if(opening&&blinkProg<1) blinkProg=Math.min(1,blinkProg+0.014);
-    mat.uniforms.time.value=t;
 
-    /* pupil dilation */
-    const dist=Math.sqrt(mx*mx+my*my);
-    mat.uniforms.pupil.value+=(0.65-dist*0.32-mat.uniforms.pupil.value)*0.05;
+    /* smooth tilt toward cursor — real 3D perspective warp */
+    rotY+=(mx*0.22-rotY)*0.055;
+    rotX+=(my*0.13-rotX)*0.055;
+    plane.rotation.set(rotX,rotY,0);
 
-    /* eye rotation follows cursor */
-    rotY+=(mx*0.22-rotY)*0.07;
-    rotX+=(my*0.14-rotX)*0.07;
-    eye.rotation.set(rotX,rotY,0);
+    /* breathing */
+    const breath=0.97+Math.sin(t*0.55)*0.03;
+    plane.scale.set(bsW*breath,bsH*breath,1);
 
-    /* breathing + blink-open */
-    eye.scale.setScalar((0.97+Math.sin(t*0.55)*0.03)*blinkProg);
+    /* subtle specular glint that drifts slightly opposite cursor */
+    glint.position.set(
+      (-mx*bsW*0.04)-bsW*0.09,
+      ( my*bsH*0.03)+bsH*0.09,
+      0.01
+    );
+    glintMat.opacity=0.04+Math.abs(mx)*0.02;
 
-    /* eyelid clip-path — ellipse that opens as blinkProg goes 0→1 */
-    const base=Math.min(window.innerWidth,window.innerHeight);
-    const ew=(base*0.68/window.innerWidth*100).toFixed(1);
-    const eh=(base*0.26*blinkProg/window.innerHeight*100).toFixed(1);
+    /* eyelid clip-path */
+    const W=window.innerWidth,H=window.innerHeight;
+    const base=Math.min(W,H);
+    const ew=(base*0.68/W*100).toFixed(1);
+    const eh=(base*0.26*blinkProg/H*100).toFixed(1);
     canvas.style.clipPath=`ellipse(${ew}% ${eh}% at 50% 46%)`;
 
     renderer.render(scene,camera);
