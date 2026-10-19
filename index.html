@@ -1100,77 +1100,27 @@ function cleanup(){
   myReady=theirReady=false; againReady={me:false,them:false};
 }
 
-/* ── WebGL Eye — photo with GPU iris-warp shader ── */
+/* ── Eye: 2D canvas compositing — iris disc slides rigidly ── */
 (function(){
-  if(typeof THREE==='undefined') return;
   const canvas=document.getElementById('eye-canvas');
+  const ctx=canvas.getContext('2d');
   const W=()=>window.innerWidth, H=()=>window.innerHeight;
 
-  const renderer=new THREE.WebGLRenderer({canvas,antialias:false,alpha:false});
-  renderer.setPixelRatio(Math.min(devicePixelRatio,2));
-  renderer.setClearColor(0x08080f,1);
-  /* DISABLED — not needed for flat shader */
-  const _noop=0;
+  /* photo natural dimensions */
+  const PW=626, PH=524;
+  /* iris center in photo pixels (measured from top-left of image) */
+  const PIX=313, PIY=268;
+  /* iris radius in photo pixels */
+  const PIR=108;
 
-  const scene=new THREE.Scene();
-  const camera=new THREE.OrthographicCamera(-1,1,1,-1,0,1);
-
-  const loader=new THREE.TextureLoader();
-  loader.crossOrigin='anonymous';
-  const eyeTex=loader.load('/eye.webp');
-  eyeTex.minFilter=THREE.LinearFilter;
-  eyeTex.magFilter=THREE.LinearFilter;
-
-  /* irisCenter = where the iris is in the photo (UV 0-1, y=0 bottom y=1 top)
-     irisRadius = how big the warp zone is in UV space */
-  const uniforms={
-    tEye:       {value:eyeTex},
-    irisCenter: {value:new THREE.Vector2(0.50,0.48)},
-    irisRadius: {value:0.20},
-    gaze:       {value:new THREE.Vector2(0,0)},
-    screenRatio:{value:W()/H()},
-  };
-
-  const mat=new THREE.ShaderMaterial({
-    uniforms,
-    vertexShader:`
-      varying vec2 vUv;
-      void main(){ vUv=uv; gl_Position=vec4(position.xy,0.0,1.0); }
-    `,
-    fragmentShader:`
-      uniform sampler2D tEye;
-      uniform vec2 irisCenter;
-      uniform float irisRadius;
-      uniform vec2 gaze;
-      uniform float screenRatio;
-      varying vec2 vUv;
-      void main(){
-        const float PR=1.194656;
-        vec2 uv=vUv;
-        /* cover-fit: letterbox/pillarbox to match photo aspect ratio */
-        float r=screenRatio/PR;
-        if(r>1.0){ uv.x=(uv.x-0.5)/r+0.5; }
-        else      { uv.y=(uv.y-0.5)*r+0.5; }
-        /* iris warp: pixels near iris center shift in gaze direction */
-        vec2 delta=uv-irisCenter;
-        delta.x*=PR;
-        float dist=length(delta);
-        float inf=1.0-smoothstep(irisRadius*0.05,irisRadius*1.6,dist);
-        uv-=gaze*0.06*inf;
-        gl_FragColor=texture2D(tEye,clamp(uv,0.001,0.999));
-      }
-    `,
-  });
-
-  scene.add(new THREE.Mesh(new THREE.PlaneGeometry(2,2),mat));
+  const img=new Image();
+  img.crossOrigin='anonymous';
+  img.src='/eye.webp';
 
   let mx=0,my=0,gx=0,gy=0,openProg=0,t=0,opening=false;
   setTimeout(()=>{opening=true;},300);
 
-  function resize(){
-    renderer.setSize(W(),H());
-    uniforms.screenRatio.value=W()/H();
-  }
+  function resize(){ canvas.width=W(); canvas.height=H(); }
   window.addEventListener('resize',resize); resize();
 
   document.addEventListener('mousemove',e=>{
@@ -1179,20 +1129,59 @@ function cleanup(){
   });
   window.addEventListener('deviceorientation',e=>{
     if(e.gamma!=null) mx=(e.gamma/45)*0.8;
-    if(e.beta!=null) my=-((e.beta-45)/45)*0.6;
+    if(e.beta!=null)  my=-((e.beta-45)/45)*0.6;
   });
 
   function frame(){
     t+=0.016;
     if(opening&&openProg<1) openProg=Math.min(1,openProg+0.018);
     gx+=(mx-gx)*0.08; gy+=(my-gy)*0.08;
-    uniforms.gaze.value.set(gx,gy);
-    const ew=52,eh=(20*openProg).toFixed(1);
-    canvas.style.clipPath=`ellipse(${ew}% ${eh}% at 50% 47%)`;
-    renderer.render(scene,camera);
+
+    const cw=W(), ch=H();
+    if(!img.complete||!img.naturalWidth){requestAnimationFrame(frame);return;}
+
+    /* cover-fit: scale photo to fill canvas */
+    const pr=PW/PH, sr=cw/ch;
+    let dw,dh,dx,dy;
+    if(sr>pr){ dw=cw; dh=cw/pr; dx=0; dy=(ch-dh)/2; }
+    else     { dh=ch; dw=ch*pr; dx=(cw-dw)/2; dy=0; }
+
+    const sf=dw/PW;
+    const sIX=dx+PIX*sf;   /* iris center X on screen */
+    const sIY=dy+PIY*sf;   /* iris center Y on screen */
+    const sIR=PIR*sf;      /* iris radius on screen */
+
+    /* iris travel: up to 35% of its radius */
+    const offX= gx*sIR*0.35;
+    const offY=-gy*sIR*0.30;
+
+    ctx.clearRect(0,0,cw,ch);
+
+    /* 1 — draw entire photo (background: eyelids, skin, sclera) */
+    ctx.drawImage(img,dx,dy,dw,dh);
+
+    /* 2 — paint sclera-colored gradient over original iris position */
+    const sg=ctx.createRadialGradient(sIX,sIY,sIR*0.55, sIX,sIY,sIR*1.1);
+    sg.addColorStop(0,  'rgba(237,225,212,1)');
+    sg.addColorStop(0.88,'rgba(237,225,212,1)');
+    sg.addColorStop(1,  'rgba(237,225,212,0)');
+    ctx.fillStyle=sg;
+    ctx.beginPath(); ctx.arc(sIX,sIY,sIR*1.15,0,Math.PI*2); ctx.fill();
+
+    /* 3 — redraw iris at offset: clip to circle, translate photo so iris
+           in the source aligns with the new clip center */
+    ctx.save();
+    ctx.beginPath(); ctx.arc(sIX+offX,sIY+offY,sIR,0,Math.PI*2); ctx.clip();
+    ctx.translate(offX,offY);
+    ctx.drawImage(img,dx,dy,dw,dh);
+    ctx.restore();
+
+    canvas.style.clipPath=`ellipse(52% ${(20*openProg).toFixed(1)}% at 50% 47%)`;
     requestAnimationFrame(frame);
   }
-  frame();
+
+  img.addEventListener('load',()=>requestAnimationFrame(frame));
+  if(img.complete) requestAnimationFrame(frame);
 })();
 </script>
 </body>
