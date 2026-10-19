@@ -1132,9 +1132,10 @@ function cleanup(){
   rim.position.set(0,0,-3);
   scene.add(rim);
 
-  /* ── Eyeball sphere with AI-generated texture ── */
-  const EYE_TEX='https://d8j0ntlcm91z4.cloudfront.net/user_3GjWeHvnZJsFxTmpMcYsBTEyrPI/hf_20261019_221650_e672c800-9cc8-4270-a67f-20c31787911f.png';
-  const tex=new THREE.TextureLoader().load(EYE_TEX);
+  /* ── Eyeball sphere — local eye photo as texture ── */
+  const loader=new THREE.TextureLoader();
+  loader.crossOrigin='anonymous';
+  const tex=loader.load('/eye.webp');
   tex.minFilter=THREE.LinearMipmapLinearFilter;
   tex.generateMipmaps=true;
   tex.anisotropy=renderer.capabilities.getMaxAnisotropy();
