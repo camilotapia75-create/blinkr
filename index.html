@@ -678,8 +678,6 @@ html,body{
   </div>
 </div>
 
-<!-- Three.js WebGL -->
-<script src="https://cdn.jsdelivr.net/npm/three@0.158.0/build/three.min.js"></script>
 <!-- PeerJS -->
 <script src="https://cdn.jsdelivr.net/npm/peerjs@1.5.2/dist/peerjs.min.js"></script>
 <!-- MediaPipe WASM runtime (no loadGraphModel needed) -->
@@ -1100,103 +1098,195 @@ function cleanup(){
   myReady=theirReady=false; againReady={me:false,them:false};
 }
 
-/* ── WebGL Eye (photo) ── */
+/* ── Canvas Eye (photo + animated iris) ── */
 (function(){
-  if(typeof THREE==='undefined') return;
   const canvas=document.getElementById('eye-canvas');
-  const renderer=new THREE.WebGLRenderer({canvas,antialias:true,alpha:false});
-  renderer.setPixelRatio(Math.min(window.devicePixelRatio,2));
-  renderer.setClearColor(0x0a0a0a,1);
+  const ctx=canvas.getContext('2d');
 
-  const scene=new THREE.Scene();
-  const camera=new THREE.PerspectiveCamera(35,1,0.1,100);
-  camera.position.z=3.2;
+  const img=new Image();
+  img.src='/eye.webp';
 
-  /* load the real eye photo */
-  const tex=new THREE.TextureLoader().load('/eye.webp');
-  tex.minFilter=THREE.LinearFilter;
-  tex.magFilter=THREE.LinearFilter;
+  /* normalized measurements of the iris within the 626×524 photo */
+  const IN_X=0.500, IN_Y=0.517; /* iris center as fraction of photo dims */
+  const IN_R=0.222;              /* iris radius as fraction of photo width */
+  const PU_R=0.088;              /* pupil radius as fraction of photo width */
 
-  const geo=new THREE.PlaneGeometry(1,1,1,1);
-  const mat=new THREE.MeshBasicMaterial({map:tex});
-  const plane=new THREE.Mesh(geo,mat);
-  scene.add(plane);
+  let mx=0,my=0,smx=0,smy=0;   /* raw + smoothed cursor (-1..1) */
+  let blinkProg=0,t=0,opening=false;
 
-  /* subtle specular-glint overlay: small bright sphere segment */
-  const glintGeo=new THREE.PlaneGeometry(1,1,1,1);
-  const glintMat=new THREE.MeshBasicMaterial({
-    transparent:true,opacity:0,
-    color:0xffffff
-  });
-  const glint=new THREE.Mesh(glintGeo,glintMat);
-  glint.position.z=0.01;
-  scene.add(glint);
+  setTimeout(()=>{opening=true;},300);
 
-  let mx=0,my=0,rotX=0,rotY=0,blinkProg=0,t=0,opening=false;
-  let bsW=1,bsH=1; /* base scale cached from resize */
-
-  setTimeout(()=>{opening=true;},350);
-
-  /* scale plane to cover viewport at all aspect ratios */
-  function updateSize(){
-    const W=window.innerWidth,H=window.innerHeight;
-    renderer.setSize(W,H);
-    camera.aspect=W/H;
-    camera.updateProjectionMatrix();
-    const vFov=(35*Math.PI/180);
-    const vH=2*Math.tan(vFov/2)*3.2;
-    const vW=vH*(W/H);
-    const imgA=626/524; /* eye photo aspect ratio */
-    if(vW/vH>imgA){ bsW=vW*1.22; bsH=bsW/imgA; }
-    else           { bsH=vH*1.22; bsW=bsH*imgA; }
-    plane.scale.set(bsW,bsH,1);
-    glint.scale.set(bsW*0.28,bsH*0.22,1);
-    glint.position.set(-bsW*0.10,-bsH*0.09,0.01);
+  function resize(){
+    canvas.width=window.innerWidth;
+    canvas.height=window.innerHeight;
   }
-  window.addEventListener('resize',updateSize);
-  updateSize();
+  window.addEventListener('resize',resize);
+  resize();
 
   document.addEventListener('mousemove',e=>{
-    mx=(e.clientX/window.innerWidth-0.5)*2;
+    mx=(e.clientX/window.innerWidth -0.5)*2;
     my=-(e.clientY/window.innerHeight-0.5)*2;
   });
   window.addEventListener('deviceorientation',e=>{
-    if(e.gamma!=null) mx=(e.gamma/45)*0.7;
-    if(e.beta !=null) my=-((e.beta-45)/45)*0.5;
+    if(e.gamma!=null) mx=(e.gamma/45)*0.8;
+    if(e.beta !=null) my=-((e.beta-45)/45)*0.6;
   });
+
+  /* iris fiber cache */
+  const FIBERS=Array.from({length:64},(_,i)=>{
+    const a=(i/64)*Math.PI*2;
+    return{
+      a, curl:(Math.sin(i*2.7)*0.35),
+      len:0.52+Math.sin(i*3.1+1.4)*0.38,
+      w:0.55+Math.sin(i*4.1)*0.28,
+      alp:0.22+Math.sin(i*2.1)*0.10,
+      hue:185+Math.sin(i*3.3)*12,
+      sat:42+Math.sin(i*5.1)*14,
+      lit:22+Math.sin(i*6.7)*9
+    };
+  });
+
+  function drawIris(cx,cy,r,pupilShiftX,pupilShiftY,dist){
+    ctx.save();
+    ctx.beginPath();
+    ctx.arc(cx,cy,r,0,Math.PI*2);
+    ctx.clip();
+
+    /* iris base — blue-green matching photo */
+    const ig=ctx.createRadialGradient(cx,cy-r*0.05,r*0.04,cx,cy,r);
+    ig.addColorStop(0,'#6fa3b2');
+    ig.addColorStop(0.22,'#4f8a9a');
+    ig.addColorStop(0.52,'#3a6e7e');
+    ig.addColorStop(0.80,'#274f5c');
+    ig.addColorStop(1,'#162f38');
+    ctx.fillStyle=ig;
+    ctx.fillRect(cx-r,cy-r,r*2,r*2);
+
+    /* radial fibers */
+    ctx.globalCompositeOperation='screen';
+    for(const f of FIBERS){
+      ctx.globalAlpha=f.alp;
+      ctx.strokeStyle=`hsl(${f.hue},${f.sat}%,${f.lit}%)`;
+      ctx.lineWidth=f.w;
+      ctx.beginPath();
+      ctx.moveTo(cx+Math.cos(f.a)*r*0.11,cy+Math.sin(f.a)*r*0.11);
+      ctx.quadraticCurveTo(
+        cx+Math.cos(f.a+f.curl)*r*0.54,cy+Math.sin(f.a+f.curl)*r*0.54,
+        cx+Math.cos(f.a)*r*f.len,cy+Math.sin(f.a)*r*f.len
+      );
+      ctx.stroke();
+    }
+    ctx.globalCompositeOperation='source-over';
+    ctx.globalAlpha=1;
+
+    /* limbal ring */
+    const lr=ctx.createRadialGradient(cx,cy,r*0.76,cx,cy,r);
+    lr.addColorStop(0,'rgba(0,0,0,0)');
+    lr.addColorStop(0.55,'rgba(0,0,0,0.52)');
+    lr.addColorStop(1,'rgba(0,0,0,0.94)');
+    ctx.fillStyle=lr;
+    ctx.fillRect(cx-r,cy-r,r*2,r*2);
+
+    ctx.restore();
+
+    /* pupil — shifts toward cursor independently */
+    const px=cx+pupilShiftX, py=cy+pupilShiftY;
+    const pr=r*(PU_R/IN_R)*(0.82+dist*0.22);
+    const pg=ctx.createRadialGradient(px-pr*0.12,py-pr*0.12,0,px,py,pr);
+    pg.addColorStop(0,'#18100a');
+    pg.addColorStop(0.65,'#070301');
+    pg.addColorStop(1,'#000000');
+    ctx.fillStyle=pg;
+    ctx.beginPath();
+    ctx.arc(px,py,pr,0,Math.PI*2);
+    ctx.fill();
+
+    /* cornea specular highlight — follows cursor */
+    const sx=px-pr*0.52+smx*pr*0.18;
+    const sy=py-pr*0.52-smy*pr*0.14;
+    const sp=ctx.createRadialGradient(sx,sy,0,sx,sy,pr*0.58);
+    sp.addColorStop(0,'rgba(255,252,248,0.94)');
+    sp.addColorStop(0.38,'rgba(255,252,248,0.40)');
+    sp.addColorStop(1,'rgba(255,252,248,0)');
+    ctx.fillStyle=sp;
+    ctx.beginPath();
+    ctx.ellipse(sx,sy,pr*0.30,pr*0.21,-0.5,0,Math.PI*2);
+    ctx.fill();
+
+    /* tiny secondary catchlight */
+    ctx.fillStyle='rgba(255,252,248,0.48)';
+    ctx.beginPath();
+    ctx.arc(px+pr*0.44,py-pr*0.32,pr*0.09,0,Math.PI*2);
+    ctx.fill();
+  }
 
   function frame(){
     t+=0.016;
-    if(opening&&blinkProg<1) blinkProg=Math.min(1,blinkProg+0.014);
+    if(opening&&blinkProg<1) blinkProg=Math.min(1,blinkProg+0.018);
+    smx+=(mx-smx)*0.055;
+    smy+=(my-smy)*0.055;
 
-    /* smooth tilt toward cursor — real 3D perspective warp */
-    rotY+=(mx*0.22-rotY)*0.055;
-    rotX+=(my*0.13-rotX)*0.055;
-    plane.rotation.set(rotX,rotY,0);
+    const W=canvas.width, H=canvas.height;
+    ctx.fillStyle='#0a0a0a';
+    ctx.fillRect(0,0,W,H);
 
-    /* breathing */
-    const breath=0.97+Math.sin(t*0.55)*0.03;
-    plane.scale.set(bsW*breath,bsH*breath,1);
+    if(img.complete&&img.naturalWidth){
+      const imgA=img.naturalWidth/img.naturalHeight;
+      const screenA=W/H;
 
-    /* subtle specular glint that drifts slightly opposite cursor */
-    glint.position.set(
-      (-mx*bsW*0.04)-bsW*0.09,
-      ( my*bsH*0.03)+bsH*0.09,
-      0.01
-    );
-    glintMat.opacity=0.04+Math.abs(mx)*0.02;
+      /* fit photo so it looks natural — max 62% screen height, centered */
+      const maxH=H*0.62;
+      const maxW=W*0.80;
+      let dh=maxH, dw=dh*imgA;
+      if(dw>maxW){ dw=maxW; dh=dw/imgA; }
 
-    /* eyelid clip-path */
-    const W=window.innerWidth,H=window.innerHeight;
+      const dx=(W-dw)/2;
+      const dy=(H-dh)*0.44; /* sit slightly above center */
+
+      /* slight background parallax */
+      const bpx=smx*W*0.008;
+      const bpy=-smy*H*0.008;
+
+      ctx.drawImage(img,dx+bpx,dy+bpy,dw,dh);
+
+      /* iris position in screen space */
+      const irisCX=dx+bpx+IN_X*dw;
+      const irisCY=dy+bpy+IN_Y*dh;
+      const irisR=IN_R*dw;
+
+      /* pupil shift — clear, visible movement toward cursor */
+      const maxShift=irisR*0.28;
+      const pupilShiftX=smx*maxShift;
+      const pupilShiftY=-smy*maxShift;
+      const dist=Math.sqrt(smx*smx+smy*smy);
+
+      /* dark mask to erase the static photo iris */
+      const mask=ctx.createRadialGradient(irisCX,irisCY,irisR*0.55,irisCX,irisCY,irisR*1.04);
+      mask.addColorStop(0,'rgba(6,5,10,0.97)');
+      mask.addColorStop(0.72,'rgba(6,5,10,0.94)');
+      mask.addColorStop(1,'rgba(6,5,10,0)');
+      ctx.fillStyle=mask;
+      ctx.beginPath();
+      ctx.arc(irisCX,irisCY,irisR*1.04,0,Math.PI*2);
+      ctx.fill();
+
+      drawIris(irisCX,irisCY,irisR,pupilShiftX,pupilShiftY,dist);
+    }
+
+    /* eyelid clip-path — ellipse opens on load */
     const base=Math.min(W,H);
     const ew=(base*0.68/W*100).toFixed(1);
     const eh=(base*0.26*blinkProg/H*100).toFixed(1);
     canvas.style.clipPath=`ellipse(${ew}% ${eh}% at 50% 46%)`;
 
-    renderer.render(scene,camera);
+    /* CSS 3D perspective tilt */
+    const tX=(smy*7).toFixed(2);
+    const tY=(smx*11).toFixed(2);
+    canvas.style.transform=`perspective(1100px) rotateX(${tX}deg) rotateY(${tY}deg)`;
+
     requestAnimationFrame(frame);
   }
-  frame();
+  requestAnimationFrame(frame);
 })();
 </script>
 </body>
